@@ -14,13 +14,42 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Custom CSS for ChatGPT-like interface
+# Custom CSS for clean interface
 st.markdown("""
     <style>
-        /* Main chat interface styling */
+        /* Global styling */
+        * {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            color: #000000;
+        }
+        
+        /* Main container */
         .main {
-            max-width: 1200px;
+            max-width: 800px;
             margin: 0 auto;
+            background-color: #ffffff;
+        }
+        
+        /* Sidebar styling */
+        .css-1d391kg {
+            background-color: #202123;
+            padding: 1rem;
+        }
+        
+        /* Button styling */
+        .stButton > button {
+            background-color: transparent;
+            border: 1px solid #e5e5e5;
+            color: #000000;
+            padding: 0.75rem;
+            border-radius: 0.25rem;
+            width: 100%;
+            text-align: left;
+            font-size: 0.9rem;
+        }
+        
+        .stButton > button:hover {
+            background-color: #f7f7f8;
         }
         
         /* Message styling */
@@ -30,6 +59,7 @@ st.markdown("""
             border-radius: 0.5rem;
             display: flex;
             flex-direction: column;
+            border: 1px solid #e5e5e5;
         }
         
         .user-message {
@@ -40,57 +70,56 @@ st.markdown("""
             background-color: #ffffff;
         }
         
-        /* Sidebar styling */
-        .chat-sidebar {
-            padding: 1rem;
-            background-color: #202123;
-        }
-        
-        .sidebar-button {
-            width: 100%;
-            padding: 0.5rem;
-            margin: 0.25rem 0;
-            background-color: transparent;
-            border: 1px solid #4a4a4a;
-            color: white;
-            border-radius: 0.25rem;
-            cursor: pointer;
-            text-align: left;
-        }
-        
-        .sidebar-button:hover {
-            background-color: #2b2b2b;
-        }
-        
-        /* Input box styling */
+        /* Input styling */
         .stTextInput > div > div > input {
             background-color: #ffffff;
             border: 1px solid #e5e5e5;
-            padding: 0.5rem;
+            color: #000000;
+            padding: 0.75rem;
             border-radius: 0.5rem;
+            font-size: 1rem;
         }
         
-        /* Hide Streamlit branding */
+        /* Hide Streamlit components */
         #MainMenu {visibility: hidden;}
         footer {visibility: hidden;}
         
-        /* Message metadata styling */
+        /* Message metadata */
         .message-metadata {
             font-size: 0.8rem;
             color: #666;
             margin-top: 0.5rem;
         }
         
-        /* Conversation title styling */
+        /* Title styling */
+        h1, h2, h3 {
+            color: #000000;
+            font-weight: 500;
+        }
+        
+        /* Conversation title */
         .conversation-title {
-            padding: 0.5rem;
+            color: #000000;
+            padding: 0.5rem 0;
             margin-bottom: 1rem;
             border-bottom: 1px solid #e5e5e5;
+            font-size: 1.1rem;
         }
 
-        /* Loading spinner */
-        .stSpinner {
-            text-align: center;
+        /* Login container */
+        .login-container {
+            max-width: 400px;
+            margin: 4rem auto;
+            padding: 2rem;
+            background-color: #ffffff;
+            border-radius: 0.5rem;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        /* Clean divider */
+        hr {
+            border: none;
+            border-top: 1px solid #e5e5e5;
             margin: 1rem 0;
         }
     </style>
