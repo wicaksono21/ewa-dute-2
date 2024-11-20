@@ -17,61 +17,87 @@ st.set_page_config(
 # Custom CSS for clean interface
 st.markdown("""
     <style>
-        /* Global styles */
-        * {
-            color: black !important;
-        }
-        
-        /* Input fields */
-        .stTextInput > div > div > input {
-            color: black !important;
-            background-color: white;
-            border: 1px solid #e5e5e5;
-        }
-        
-        /* Login container */
-        .login-container {
-            background-color: white;
-            padding: 2rem;
-            border-radius: 0.5rem;
-            max-width: 400px;
-            margin: 4rem auto;
-        }
-        
-        /* Labels */
-        .stTextInput > label {
-            color: black !important;
-        }
-        
-        /* Button */
-        .stButton > button {
+        /* Global text colors */
+        .main * {
             color: white !important;
-            background-color: #2b2c2d;
-            border: none;
         }
         
-        .stButton > button:hover {
-            background-color: #404142;
+        /* Sidebar styling */
+        .css-1d391kg {
+            background-color: #202123;
         }
         
-        /* Error messages */
-        .stAlert > div {
-            color: #ff0000 !important;
+        .css-1d391kg * {
+            color: white !important;
         }
         
-        /* Hide Streamlit components */
+        /* Sidebar buttons */
+        .stButton > button {
+            width: 100%;
+            text-align: left;
+            background-color: transparent !important;
+            border: 1px solid rgba(255, 255, 255, 0.2) !important;
+            color: white !important;
+            padding: 0.5rem;
+        }
+        
+        /* Chat message styling */
+        .chat-message {
+            padding: 1.5rem;
+            margin: 1rem 0;
+            border-radius: 0.5rem;
+            color: white !important;
+        }
+        
+        .user-message {
+            background-color: #343541;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .assistant-message {
+            background-color: #444654;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        /* Input field styling */
+        .stTextInput input, .stTextArea textarea {
+            color: white !important;
+            background-color: #40414f !important;
+            border: 1px solid rgba(255, 255, 255, 0.2) !important;
+        }
+        
+        /* Main chat input */
+        .stChatInput input {
+            color: white !important;
+            background-color: #40414f !important;
+            border: 1px solid rgba(255, 255, 255, 0.2) !important;
+        }
+        
+        /* Message content */
+        .message-content {
+            color: white !important;
+        }
+        
+        /* Timestamp */
+        .message-timestamp {
+            color: rgba(255, 255, 255, 0.5) !important;
+            font-size: 0.8rem;
+        }
+        
+        /* Headers and titles */
+        h1, h2, h3, h4, h5, h6 {
+            color: white !important;
+        }
+        
+        /* All text elements */
+        p, span, div {
+            color: white !important;
+        }
+        
+        /* Hide Streamlit branding */
         #MainMenu {visibility: hidden;}
         footer {visibility: hidden;}
         
-        /* Page background */
-        .main .block-container {
-            background-color: white;
-        }
-        
-        /* Ensure all text is visible */
-        p, h1, h2, h3, label, div {
-            color: black !important;
-        }
     </style>
 """, unsafe_allow_html=True)
 
@@ -185,50 +211,50 @@ class ChatInterface:
             return []
 
     def render_sidebar(self):
-        """Render the sidebar with conversation history"""
-        with st.sidebar:
-            st.markdown("## Essay Writing Assistant", unsafe_allow_html=True)
+    """Render the sidebar with conversation history"""
+    with st.sidebar:
+        st.markdown('<h2 style="color: white;">Essay Writing Assistant</h2>', unsafe_allow_html=True)
+        
+        if st.button("+ New Essay", key="new_chat", use_container_width=True):
+            st.session_state.messages = []
+            st.session_state.current_conversation_id = None
+            st.rerun()
+        
+        st.markdown("<hr style='margin: 1rem 0; opacity: 0.2;'>", unsafe_allow_html=True)
+        
+        conversations = self.get_user_conversations(st.session_state.user.uid)
+        for conv in conversations:
+            button_key = f"conv_{conv['id']}"
+            preview_text = conv.get('title', 'Untitled Essay')
+            timestamp = conv.get('updated_at', '')
             
-            # New Chat button - clean style
-            if st.button("+ New Essay", key="new_chat", use_container_width=True):
-                st.session_state.messages = []
-                st.session_state.current_conversation_id = None
+            # Add timestamp in smaller text below the title
+            st.markdown(f"""
+                <div style='margin-bottom: 0.5rem;'>
+                    <button class='stButton' style='width: 100%; text-align: left;' key='{button_key}'>
+                        <div style='color: white;'>{preview_text}</div>
+                        <div style='color: rgba(255,255,255,0.5); font-size: 0.8rem;'>{timestamp}</div>
+                    </button>
+                </div>
+            """, unsafe_allow_html=True)
+            
+            if st.button(f"hidden_{preview_text}", key=button_key, help="Click to load this conversation"):
+                self.load_conversation(conv['id'])
                 st.rerun()
-            
-            st.markdown("<hr style='margin: 1rem 0'>", unsafe_allow_html=True)
-            
-            # Display conversation history
-            conversations = self.get_user_conversations(st.session_state.user.uid)
-            for conv in conversations:
-                button_key = f"conv_{conv['id']}"
-                preview_text = conv.get('title', 'Untitled Essay')
-                timestamp = conv.get('updated_at', 'No date')
-                
-                if st.button(
-                    preview_text,  # Removed timestamp from button text
-                    key=button_key,
-                    use_container_width=True
-                ):
-                    self.load_conversation(conv['id'])
-                    st.rerun()
 
     def render_messages(self):
-        """Render chat messages"""
-        for msg in st.session_state.messages:
-            if msg["role"] != "system":
-                # Determine message style based on role
-                style_class = "assistant-message" if msg["role"] == "assistant" else "user-message"
-                
-                # Timestamp should already be a string
-                timestamp = msg.get("timestamp", "No time")
-                
-                # Render message with metadata
-                st.markdown(f"""
-                    <div class="chat-message {style_class}">
-                        <div class="message-content">{msg["content"]}</div>
-                        <div class="message-metadata">{timestamp}</div>
-                    </div>
-                """, unsafe_allow_html=True)
+    """Render chat messages"""
+    for msg in st.session_state.messages:
+        if msg["role"] != "system":
+            style_class = "assistant-message" if msg["role"] == "assistant" else "user-message"
+            timestamp = msg.get("timestamp", "")
+            
+            st.markdown(f"""
+                <div class="chat-message {style_class}">
+                    <div class="message-content">{msg["content"]}</div>
+                    <div class="message-timestamp">{timestamp}</div>
+                </div>
+            """, unsafe_allow_html=True)
 
     def handle_chat_input(self):
         """Handle chat input and responses"""
@@ -462,13 +488,8 @@ def main():
     chat.render_sidebar()
     
    # Main chat area
-    st.markdown("""
-        <h1 style='color: #000000; font-weight: 500; margin-bottom: 2rem;'>
-            Essay Writing Assistant
-        </h1>
-    """, unsafe_allow_html=True)
+    st.markdown('<h1 style="color: white;">Essay Writing Assistant</h1>', unsafe_allow_html=True)
     
-    # Show current conversation title if it exists
     if st.session_state.current_conversation_id:
         try:
             conversation = db.collection('conversations').document(
@@ -476,7 +497,7 @@ def main():
             ).get().to_dict()
             if conversation:
                 st.markdown(
-                    f"<div style='color: #000000; padding: 0.5rem 0; margin-bottom: 1rem; border-bottom: 1px solid #e5e5e5;'>{conversation['title']}</div>",
+                    f"<div style='color: white; padding: 0.5rem 0; margin-bottom: 1rem; border-bottom: 1px solid rgba(255,255,255,0.1);'>{conversation['title']}</div>",
                     unsafe_allow_html=True
                 )
         except Exception as e:
