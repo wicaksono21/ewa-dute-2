@@ -109,6 +109,18 @@ if not firebase_admin._apps:
 # Initialize Firestore
 db = firestore.client()
 
+# Define initial assistant message
+INITIAL_ASSISTANT_MESSAGE = {
+    "role": "assistant",
+    "content": "Hi there! Ready to start your essay? I'm here to guide and help you improve your argumentative essay writing skills with activities like:\n"
+              "1. **Topic Selection**\n"
+              "2. **Outlining**\n"
+              "3. **Drafting**\n"
+              "4. **Reviewing**\n"
+              "5. **Proofreading**\n\n"
+              "What topic are you interested in writing about? If you'd like suggestions, just let me know!"
+}
+
 class ChatInterface:
     def __init__(self):
         self.london_tz = pytz.timezone("Europe/London")
@@ -125,7 +137,6 @@ class ChatInterface:
             st.session_state.last_activity = datetime.now()
 
     def create_new_conversation(self, user_id: str) -> str:
-        """Create a new conversation in Firestore"""
         try:
             conversation_ref = db.collection('conversations').document()
             current_time = datetime.now(self.london_tz)
@@ -137,9 +148,18 @@ class ChatInterface:
                 'status': 'active'
             }
             conversation_ref.set(conversation_data)
+
+            # Add initial assistant message
+            initial_message = {
+                **INITIAL_ASSISTANT_MESSAGE,
+                "timestamp": current_time
+            }
+            db.collection('conversations').document(conversation_ref.id)\
+                .collection('messages').add(initial_message)
+
             return conversation_ref.id
         except Exception as e:
-            st.error(f"Error creating new conversation: {str(e)}")
+            st.error(f"Error creating conversation: {str(e)}")
             return None
 
     def load_conversation(self, conversation_id: str):
@@ -210,13 +230,17 @@ class ChatInterface:
             st.error(f"Error getting conversations: {str(e)}")
             return []
 
-    def render_sidebar(self):
-        """Render the sidebar with conversation history"""
+   def render_sidebar(self):
         with st.sidebar:
             st.markdown('<h2 style="color: white;">Essay Writing Assistant</h2>', unsafe_allow_html=True)
             
             if st.button("+ New Essay", key="new_chat", use_container_width=True):
-                st.session_state.messages = []
+                # Initialize new conversation with welcome message
+                current_time = datetime.now(self.london_tz)
+                st.session_state.messages = [{
+                    **INITIAL_ASSISTANT_MESSAGE,
+                    "timestamp": current_time.strftime("%H:%M")
+                }]
                 st.session_state.current_conversation_id = None
                 st.rerun()
             
@@ -231,6 +255,7 @@ class ChatInterface:
                 ):
                     self.load_conversation(conv['id'])
                     st.rerun()
+
 
     def render_messages(self):
         """Render chat messages"""
@@ -367,118 +392,60 @@ Additional Guidelines:
                 st.error(f"Error in chat handling: {str(e)}")
 
 def login_page():
-    """Render login page"""
-    # Custom CSS for centered layout and white text
     st.markdown("""
-        <style>
-            /* Remove default Streamlit labels */
-            .stTextInput label {
-                display: none;
-            }
-            
-            /* Input fields */
-            .stTextInput input {
-                background-color: white;
-                border: 1px solid rgba(255, 255, 255, 0.2);
-                padding: 10px;
-                color: black !important;
-                border-radius: 4px;
-                margin-top: 5px;
-                width: 100%;
-            }
-            
-            /* Login button */
-            .stButton button {
-                background-color: transparent !important;
-                border: 1px solid rgba(255, 255, 255, 0.2) !important;
-                border-radius: 4px;
-                padding: 10px;
-                width: 100%;
-                margin-top: 10px;
-            }
-            
-            /* Button text color */
-            .stButton button p {
-                color: white !important;
-            }
-            
-            /* Custom labels */
-            .custom-label {
-                color: white !important;
-                font-size: 0.9rem;
-                margin-bottom: 5px;
-                display: block;
-            }
-            
-            /* Title */
-            h1 {
-                color: white !important;
-                margin-bottom: 2rem;
-            }
-        </style>
+        <div style="color: white; text-align: center; margin-bottom: 2rem;">
+            <h1>Essay Writing Assistant</h1>
+        </div>
     """, unsafe_allow_html=True)
     
-    # Title
-    st.markdown("<h1>Essay Writing Assistant</h1>", unsafe_allow_html=True)
-    
-    # Center the form
-    with st.container():
-        # Create some vertical space
-        for _ in range(2):
-            st.write("")
-            
-        col1, col2, col3 = st.columns([1, 2, 1])
-        with col2:
-            # Email field with white label
-            st.markdown("<label class='custom-label'>Email</label>", unsafe_allow_html=True)
-            email = st.text_input(" ", key="email")  # Space as label to maintain layout
-            
-            # Password field with white label
-            st.markdown("<label class='custom-label'>Password</label>", unsafe_allow_html=True)
-            password = st.text_input(" ", type="password", key="password")  # Space as label to maintain layout
-            
-            # Login button
-            if st.button("Login", use_container_width=True):
-                try:
-                    user = auth.get_user_by_email(email)
-                    st.session_state.user = user
-                    st.session_state.logged_in = True
-                    st.session_state.last_activity = datetime.now()
-                    st.rerun()
-                except Exception as e:
-                    st.error("Login failed. Please check your credentials.")
+    col1, col2, col3 = st.columns([1,2,1])
+    with col2:
+        st.markdown('<p style="color: white;">Email</p>', unsafe_allow_html=True)
+        email = st.text_input("", key="email")
+        
+        st.markdown('<p style="color: white;">Password</p>', unsafe_allow_html=True)
+        password = st.text_input("", type="password", key="password")
+        
+        if st.button("Login", use_container_width=True):
+            try:
+                user = auth.get_user_by_email(email)
+                st.session_state.user = user
+                st.session_state.logged_in = True
+                st.session_state.last_activity = datetime.now()
+                
+                # Initialize first conversation with welcome message
+                current_time = datetime.now(pytz.timezone("Europe/London"))
+                st.session_state.messages = [{
+                    **INITIAL_ASSISTANT_MESSAGE,
+                    "timestamp": current_time.strftime("%H:%M")
+                }]
+                
+                st.rerun()
+            except Exception as e:
+                st.error("Login failed. Please check your credentials.")
 
 def check_session_timeout():
-    """Check if the session has timed out"""
     if 'last_activity' in st.session_state:
-        if (datetime.now() - st.session_state.last_activity).seconds > 3600:  # 1 hour
+        if (datetime.now() - st.session_state.last_activity).seconds > 3600:
             st.session_state.clear()
             return True
     return False
 
 def main():
-    # Initialize chat interface
     chat = ChatInterface()
     chat.initialize_session_state()
     
-    # Check session timeout
     if check_session_timeout():
         st.warning("Session expired. Please login again.")
         st.rerun()
     
-    # Update last activity
     st.session_state.last_activity = datetime.now()
     
-    # Check login status
     if not st.session_state.get('logged_in', False):
         login_page()
         return
     
-    # Render main interface
     chat.render_sidebar()
-    
-   # Main chat area
-    st.markdown('<h1 style="color: white;">Essay Writing Assistant</h1>', unsafe_allow_html=True)
     
     if st.session_state.current_conversation_id:
         try:
@@ -487,13 +454,12 @@ def main():
             ).get().to_dict()
             if conversation:
                 st.markdown(
-                    f"<div style='color: white; padding: 0.5rem 0; margin-bottom: 1rem; border-bottom: 1px solid rgba(255,255,255,0.1);'>{conversation['title']}</div>",
+                    f"<div class='conversation-title'>{conversation['title']}</div>",
                     unsafe_allow_html=True
                 )
         except Exception as e:
             st.error(f"Error loading conversation title: {str(e)}")
     
-    # Render messages and handle input
     chat.render_messages()
     chat.handle_chat_input()
 
