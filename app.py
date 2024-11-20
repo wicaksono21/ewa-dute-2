@@ -186,17 +186,17 @@ class ChatInterface:
     def get_user_conversations(self, user_id: str, limit: int = 10):
         """Get recent conversations for the user"""
         try:
+            # Most modern query syntax using filter keyword argument
             conversations = (db.collection('conversations')
-                            .where('user_id', '==', user_id)
+                            .where(filter=firestore.FieldFilter("user_id", "==", user_id))
                             .order_by('updated_at', direction=firestore.Query.DESCENDING)
                             .limit(limit)
                             .stream())
             
-            # Convert Firestore timestamps when returning
+            # Rest of the function remains the same
             formatted_conversations = []
             for conv in conversations:
                 conv_dict = conv.to_dict()
-                # Handle timestamps
                 if 'created_at' in conv_dict and hasattr(conv_dict['created_at'], 'strftime'):
                     conv_dict['created_at'] = conv_dict['created_at'].strftime("%Y-%m-%d %H:%M")
                 if 'updated_at' in conv_dict and hasattr(conv_dict['updated_at'], 'strftime'):
