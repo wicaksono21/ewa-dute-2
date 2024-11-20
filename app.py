@@ -219,10 +219,9 @@ class ChatInterface:
                 """, unsafe_allow_html=True)
 
     def handle_chat_input(self):
-        """Handle chat input and responses"""
         if prompt := st.chat_input("Type your message here..."):
             try:
-                # Create user message with string timestamp
+                # Create user message
                 current_time = datetime.now(self.london_tz)
                 user_message = {
                     "role": "user",
@@ -231,10 +230,10 @@ class ChatInterface:
                 }
                 
                 # Add to session state and immediately display
-            	st.session_state.messages.append(user_message)
-            	self.render_messages()  # Display all messages including new user message
+                st.session_state.messages.append(user_message)
+                self.render_messages()
                 
-                # For Firestore, use datetime
+                # Save to Firestore
                 firestore_user_message = {
                     "role": "user",
                     "content": prompt,
@@ -242,7 +241,7 @@ class ChatInterface:
                 }
                 self.save_message(firestore_user_message)
                 
-                # Get AI response with loading spinner
+                # Get AI response
                 with st.spinner('Getting response...'):
                     response = OpenAI(api_key=st.secrets["default"]["OPENAI_API_KEY"]).chat.completions.create(
                         model="gpt-4o-mini",
@@ -317,23 +316,20 @@ Additional Guidelines:
                         frequency_penalty=0.5
                     )
                     
-                    # Create assistant message with string timestamp
                     assistant_message = {
                         "role": "assistant",
                         "content": response.choices[0].message.content,
                         "timestamp": datetime.now(self.london_tz).strftime("%Y-%m-%d %H:%M")
                     }
                     
-                    # Add to session state and save to Firestore
                     st.session_state.messages.append(assistant_message)
                     firestore_assistant_message = {**assistant_message, "timestamp": datetime.now(self.london_tz)}
                     self.save_message(firestore_assistant_message)
-                
-                     # Display updated messages
-                     self.render_messages()
-                
-        	except Exception as e:
-            	    st.error(f"Error in chat handling: {str(e)}")
+                    self.render_messages()
+                    
+            except Exception as e:
+                st.error(f"Error in chat handling: {str(e)}") 
+   
 
 def login_page():
     st.markdown("""
