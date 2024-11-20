@@ -121,21 +121,44 @@ st.markdown("""
             margin: 0.5rem 0;
         }
         
-        /* Chat message container */
+        /* Message container */
         .chat-message {
-            padding: 1.5rem;
-            margin: 1rem 0;
+            padding: 1rem;  /* Reduced padding */
+            margin: 0.5rem 0;  /* Reduced margin */
             border-radius: 0.5rem;
-            color: white !important;
             background-color: #444654;
             border: 1px solid rgba(255, 255, 255, 0.1);
         }
         
-        /* Message timestamp */
+        /* Message content */
+        .message-content {
+            color: white !important;
+            line-height: 1.4;  /* Reduced line height */
+            margin: 0;  /* Remove margins */
+        }
+        
+        /* Bold text */
+        .message-content strong {
+            color: white !important;
+            font-weight: 600;
+        }
+        
+        /* List styling */
+        .message-content ol {
+            margin: 0.3rem 0 0.3rem 1.2rem;  /* Compact margins */
+            padding-left: 0;
+        }
+        
+        .message-content ol li {
+            margin: 0.2rem 0;  /* Reduced spacing between list items */
+            padding-left: 0.3rem;
+        }
+        
+        /* Timestamp */
         .message-timestamp {
             color: rgba(255, 255, 255, 0.5) !important;
             font-size: 0.8rem;
-            margin-top: 0.8rem;
+            margin-top: 0.5rem;  /* Reduced top margin */
         }
     </style>
 """, unsafe_allow_html=True)
@@ -303,7 +326,12 @@ class ChatInterface:
             if msg["role"] != "system":
                 style_class = "assistant-message" if msg["role"] == "assistant" else "user-message"
                 timestamp = msg.get("timestamp", "")
-                
+
+		# Clean up the content - remove extra newlines
+            	content = msg["content"].strip()
+            	content = content.replace("\n\n\n", "\n")  # Remove triple newlines
+            	content = content.replace("\n\n", "\n")    # Convert double to single newlines
+		    
                 # Convert markdown content
                 content = msg["content"].replace("**", "<strong>", 1)
                 content = content.replace("**", "</strong>", 1)
