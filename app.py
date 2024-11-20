@@ -237,30 +237,27 @@ class ChatInterface:
     def render_sidebar(self):
         """Render the sidebar with conversation history"""
         with st.sidebar:
-            st.title("💬 Conversations")
+            st.markdown("## Essay Writing Assistant", unsafe_allow_html=True)
             
-            # New Chat button
-            if st.button("+ New Essay", key="new_chat"):
+            # New Chat button - clean style
+            if st.button("+ New Essay", key="new_chat", use_container_width=True):
                 st.session_state.messages = []
                 st.session_state.current_conversation_id = None
                 st.rerun()
             
-            st.markdown("---")
+            st.markdown("<hr style='margin: 1rem 0'>", unsafe_allow_html=True)
             
             # Display conversation history
             conversations = self.get_user_conversations(st.session_state.user.uid)
             for conv in conversations:
-                # Create a unique key for each button
                 button_key = f"conv_{conv['id']}"
-                
-                # Format the conversation preview
                 preview_text = conv.get('title', 'Untitled Essay')
                 timestamp = conv.get('updated_at', 'No date')
                 
                 if st.button(
-                    f"{preview_text}\n{timestamp}",
+                    preview_text,  # Removed timestamp from button text
                     key=button_key,
-                    help="Click to load this conversation"
+                    use_container_width=True
                 ):
                     self.load_conversation(conv['id'])
                     st.rerun()
@@ -405,24 +402,28 @@ Additional Guidelines:
 
 def login_page():
     """Render login page"""
-    st.title("Welcome to Essay Writing Assistant")
+    st.markdown("""
+        <h1 style='color: #000000; font-weight: 500; margin-bottom: 2rem;'>
+            Essay Writing Assistant
+        </h1>
+    """, unsafe_allow_html=True)
     
-    col1, col2 = st.columns([1, 1])
-    
-    with col1:
-        email = st.text_input("Email")
-    with col2:
-        password = st.text_input("Password", type="password")
-    
-    if st.button("Login"):
-        try:
-            user = auth.get_user_by_email(email)
-            st.session_state.user = user
-            st.session_state.logged_in = True
-            st.session_state.last_activity = datetime.now()
-            st.rerun()
-        except Exception as e:
-            st.error("Login failed. Please check your credentials.")
+    with st.container():
+        col1, col2, col3 = st.columns([1,2,1])
+        
+        with col2:
+            email = st.text_input("Email", key="email")
+            password = st.text_input("Password", type="password", key="password")
+            
+            if st.button("Login", use_container_width=True):
+                try:
+                    user = auth.get_user_by_email(email)
+                    st.session_state.user = user
+                    st.session_state.logged_in = True
+                    st.session_state.last_activity = datetime.now()
+                    st.rerun()
+                except Exception as e:
+                    st.error("Login failed. Please check your credentials.")
 
 def check_session_timeout():
     """Check if the session has timed out"""
@@ -453,8 +454,12 @@ def main():
     # Render main interface
     chat.render_sidebar()
     
-    # Main chat area
-    st.title("Essay Writing Assistant")
+   # Main chat area
+    st.markdown("""
+        <h1 style='color: #000000; font-weight: 500; margin-bottom: 2rem;'>
+            Essay Writing Assistant
+        </h1>
+    """, unsafe_allow_html=True)
     
     # Show current conversation title if it exists
     if st.session_state.current_conversation_id:
@@ -463,8 +468,10 @@ def main():
                 st.session_state.current_conversation_id
             ).get().to_dict()
             if conversation:
-                st.markdown(f"<div class='conversation-title'>{conversation['title']}</div>",
-                           unsafe_allow_html=True)
+                st.markdown(
+                    f"<div style='color: #000000; padding: 0.5rem 0; margin-bottom: 1rem; border-bottom: 1px solid #e5e5e5;'>{conversation['title']}</div>",
+                    unsafe_allow_html=True
+                )
         except Exception as e:
             st.error(f"Error loading conversation title: {str(e)}")
     
