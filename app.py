@@ -240,7 +240,7 @@ class ChatInterface:
                     self.load_conversation(conv['id'])
                     st.experimental_rerun()
 
-   def render_messages(self):
+    def render_messages(self):
         """Render chat messages"""
         for msg in st.session_state.messages:
             if msg["role"] != "system":
