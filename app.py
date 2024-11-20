@@ -17,110 +17,60 @@ st.set_page_config(
 # Custom CSS for clean interface
 st.markdown("""
     <style>
-        /* Global styling */
+        /* Global styles */
         * {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-            color: #000000;
+            color: black !important;
         }
         
-        /* Main container */
-        .main {
-            max-width: 800px;
-            margin: 0 auto;
-            background-color: #ffffff;
-        }
-        
-        /* Sidebar styling */
-        .css-1d391kg {
-            background-color: #202123;
-            padding: 1rem;
-        }
-        
-        /* Button styling */
-        .stButton > button {
-            background-color: transparent;
+        /* Input fields */
+        .stTextInput > div > div > input {
+            color: black !important;
+            background-color: white;
             border: 1px solid #e5e5e5;
-            color: #000000;
-            padding: 0.75rem;
-            border-radius: 0.25rem;
-            width: 100%;
-            text-align: left;
-            font-size: 0.9rem;
+        }
+        
+        /* Login container */
+        .login-container {
+            background-color: white;
+            padding: 2rem;
+            border-radius: 0.5rem;
+            max-width: 400px;
+            margin: 4rem auto;
+        }
+        
+        /* Labels */
+        .stTextInput > label {
+            color: black !important;
+        }
+        
+        /* Button */
+        .stButton > button {
+            color: white !important;
+            background-color: #2b2c2d;
+            border: none;
         }
         
         .stButton > button:hover {
-            background-color: #f7f7f8;
+            background-color: #404142;
         }
         
-        /* Message styling */
-        .chat-message {
-            padding: 1.5rem;
-            margin: 1rem 0;
-            border-radius: 0.5rem;
-            display: flex;
-            flex-direction: column;
-            border: 1px solid #e5e5e5;
-        }
-        
-        .user-message {
-            background-color: #f7f7f8;
-        }
-        
-        .assistant-message {
-            background-color: #ffffff;
-        }
-        
-        /* Input styling */
-        .stTextInput > div > div > input {
-            background-color: #ffffff;
-            border: 1px solid #e5e5e5;
-            color: #000000;
-            padding: 0.75rem;
-            border-radius: 0.5rem;
-            font-size: 1rem;
+        /* Error messages */
+        .stAlert > div {
+            color: #ff0000 !important;
         }
         
         /* Hide Streamlit components */
         #MainMenu {visibility: hidden;}
         footer {visibility: hidden;}
         
-        /* Message metadata */
-        .message-metadata {
-            font-size: 0.8rem;
-            color: #666;
-            margin-top: 0.5rem;
+        /* Page background */
+        .main .block-container {
+            background-color: white;
         }
         
-        /* Title styling */
-        h1, h2, h3 {
-            color: #000000;
-            font-weight: 500;
-        }
-        
-        /* Conversation title */
-        .conversation-title {
-            color: #000000;
-            padding: 0.5rem 0;
-            margin-bottom: 1rem;
-            border-bottom: 1px solid #e5e5e5;
-            font-size: 1.1rem;
-        }
-
-        /* Login container */
-        .login-container {
-            max-width: 400px;
-            margin: 4rem auto;
-            padding: 2rem;
-            background-color: #ffffff;
-            border-radius: 0.5rem;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        }
-
-        /* Clean divider */
-        hr {
-            border: none;
-            border-top: 1px solid #e5e5e5;
-            margin: 1rem 0;
+        /* Ensure all text is visible */
+        p, h1, h2, h3, label, div {
+            color: black !important;
         }
     </style>
 """, unsafe_allow_html=True)
@@ -401,19 +351,78 @@ Additional Guidelines:
                 st.error(f"Error in chat handling: {str(e)}")
 
 def login_page():
-    """Render login page"""
     st.markdown("""
-        <h1 style='color: #000000; font-weight: 500; margin-bottom: 2rem;'>
-            Essay Writing Assistant
-        </h1>
+        <style>
+            /* Login page specific styles */
+            .element-container input {
+                color: black !important;
+            }
+            .stTextInput > label {
+                color: black !important;
+            }
+            [data-testid="stForm"] {
+                background-color: white;
+                padding: 2rem;
+                border-radius: 0.5rem;
+            }
+            .main {
+                background-color: white;
+            }
+            /* Make all text visible */
+            label {
+                color: black !important;
+            }
+            div {
+                color: black !important;
+            }
+            h1 {
+                color: black !important;
+            }
+        </style>
+        <div style="text-align: center; color: black; margin-bottom: 2rem;">
+            <h1>Essay Writing Assistant</h1>
+        </div>
     """, unsafe_allow_html=True)
     
+    # Make the form background white
     with st.container():
+        st.markdown("""
+            <div style="
+                background-color: white;
+                padding: 2rem;
+                border-radius: 0.5rem;
+                max-width: 400px;
+                margin: 0 auto;
+            ">
+            </div>
+        """, unsafe_allow_html=True)
+        
         col1, col2, col3 = st.columns([1,2,1])
         
         with col2:
-            email = st.text_input("Email", key="email")
-            password = st.text_input("Password", type="password", key="password")
+            # Add labels with explicit black color
+            st.markdown('<p style="color: black;">Email</p>', unsafe_allow_html=True)
+            email = st.text_input("", key="email", placeholder="Enter your email")
+            
+            st.markdown('<p style="color: black;">Password</p>', unsafe_allow_html=True)
+            password = st.text_input("", type="password", key="password", placeholder="Enter your password")
+            
+            # Style the button
+            st.markdown("""
+                <style>
+                    .stButton > button {
+                        background-color: #2b2c2d;
+                        color: white !important;
+                        border: none;
+                        padding: 0.5rem 1rem;
+                        width: 100%;
+                        margin-top: 1rem;
+                    }
+                    .stButton > button:hover {
+                        background-color: #404142;
+                    }
+                </style>
+            """, unsafe_allow_html=True)
             
             if st.button("Login", use_container_width=True):
                 try:
