@@ -230,7 +230,7 @@ class ChatInterface:
             st.error(f"Error getting conversations: {str(e)}")
             return []
 
-   def render_sidebar(self):
+    def render_sidebar(self):
         with st.sidebar:
             st.markdown('<h2 style="color: white;">Essay Writing Assistant</h2>', unsafe_allow_html=True)
             
