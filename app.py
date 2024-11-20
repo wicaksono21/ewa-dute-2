@@ -289,13 +289,13 @@ Additional Guidelines:
                     )
                     
                    # Add assistant response
-                   st.session_state.messages.append({
-                   	 "role": "assistant",
-                    	 "content": response.choices[0].message.content,
-                    	"timestamp": datetime.now(self.london_tz).strftime("%Y-%m-%d %H:%M")
-                    })
+                st.session_state.messages.append({
+                    "role": "assistant",
+                    "content": response.choices[0].message.content,
+                    "timestamp": datetime.now(self.london_tz).strftime("%Y-%m-%d %H:%M")
+                })
                 
-               	 # Save assistant response
+                # Save assistant response
                 self.save_message({
                     "role": "assistant",
                     "content": response.choices[0].message.content,
