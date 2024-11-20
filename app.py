@@ -212,7 +212,7 @@ class ChatInterface:
 
     def render_sidebar(self):
     	"""Render the sidebar with conversation history"""
-   	 with st.sidebar:
+   	with st.sidebar:
         	st.markdown('<h2 style="color: white;">Essay Writing Assistant</h2>', unsafe_allow_html=True)
         
         	if st.button("+ New Essay", key="new_chat", use_container_width=True):
