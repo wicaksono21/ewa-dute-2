@@ -1,132 +1,238 @@
 import streamlit as st
 import firebase_admin
-from firebase_admin import credentials, auth, firestore, storage
+from firebase_admin import credentials, auth, firestore
 from openai import OpenAI
 from datetime import datetime
 import pytz
-import json
-import csv
-import time
-import threading
+import uuid
 
-# Initialize Firebase
+# Page configuration
+st.set_page_config(
+    page_title="Essay Writing Assistant",
+    page_icon="📝",
+    layout="wide",
+    initial_sidebar_state="expanded"
+)
+
+# Custom CSS for ChatGPT-like interface
+st.markdown("""
+    <style>
+        /* Main chat interface styling */
+        .main {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        /* Message styling */
+        .chat-message {
+            padding: 1.5rem;
+            margin: 1rem 0;
+            border-radius: 0.5rem;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .user-message {
+            background-color: #f7f7f8;
+        }
+        
+        .assistant-message {
+            background-color: #ffffff;
+        }
+        
+        /* Sidebar styling */
+        .chat-sidebar {
+            padding: 1rem;
+            background-color: #202123;
+        }
+        
+        .sidebar-button {
+            width: 100%;
+            padding: 0.5rem;
+            margin: 0.25rem 0;
+            background-color: transparent;
+            border: 1px solid #4a4a4a;
+            color: white;
+            border-radius: 0.25rem;
+            cursor: pointer;
+            text-align: left;
+        }
+        
+        .sidebar-button:hover {
+            background-color: #2b2b2b;
+        }
+        
+        /* Input box styling */
+        .stTextInput > div > div > input {
+            background-color: #ffffff;
+            border: 1px solid #e5e5e5;
+            padding: 0.5rem;
+            border-radius: 0.5rem;
+        }
+        
+        /* Hide Streamlit branding */
+        #MainMenu {visibility: hidden;}
+        footer {visibility: hidden;}
+        
+        /* Message metadata styling */
+        .message-metadata {
+            font-size: 0.8rem;
+            color: #666;
+            margin-top: 0.5rem;
+        }
+        
+        /* Conversation title styling */
+        .conversation-title {
+            padding: 0.5rem;
+            margin-bottom: 1rem;
+            border-bottom: 1px solid #e5e5e5;
+        }
+    </style>
+""", unsafe_allow_html=True)
+
+# Initialize Firebase if not already initialized
 if not firebase_admin._apps:
     cred = credentials.Certificate(dict(st.secrets["FIREBASE"]))
-    firebase_admin.initialize_app(cred, {
-        'storageBucket': st.secrets["FIREBASE"]["storage_bucket"]
-    })
+    firebase_admin.initialize_app(cred)
 
-# Initialize Firestore DB
+# Initialize Firestore
 db = firestore.client()
 
-# Get London timezone
-london_tz = pytz.timezone("Europe/London")
-
-# Function to add timestamp in London time
-def add_timestamp(message):
-    now_london = datetime.now(pytz.utc).astimezone(london_tz)
-    message['timestamp'] = now_london.strftime("%Y-%m-%d %H:%M:%S")
-    message['length'] = len(message['content'].split())  # Count the number of words
-    return message
-
-# Function to calculate response time between messages
-def calculate_response_time(messages):
-    for i in range(1, len(messages)):
-        current_time = datetime.strptime(messages[i]['timestamp'], "%Y-%m-%d %H:%M:%S")
-        previous_time = datetime.strptime(messages[i-1]['timestamp'], "%Y-%m-%d %H:%M:%S")
-        messages[i]['response_time'] = (current_time - previous_time).total_seconds()
-    return messages
-
-# Function to save chat log in CSV format
-def save_chat_log():
-    # Filter out system messages
-    messages_to_save = [
-        msg for msg in st.session_state["messages"] 
-        if msg['role'] != 'system'
-    ]
-
-    # Add timestamps and calculate response times
-    messages_to_save = calculate_response_time(
-        [add_timestamp(msg) if 'timestamp' not in msg else msg for msg in messages_to_save]
-    )
-    
-    # Prepare CSV file path
-    user_email = st.session_state['user'].email.replace('@', '_').replace('.', '_')
-    filename = f"{user_email}_{datetime.now(london_tz).strftime('%H%M')}_chat_log.csv"
-
-    # Write to CSV
-    with open(filename, 'w', newline='') as csvfile:
-        fieldnames = ['date', 'time', 'role', 'content', 'length', 'response_time']
-        writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
-        writer.writeheader()
+class ChatInterface:
+    def __init__(self):
+        self.london_tz = pytz.timezone("Europe/London")
         
-        for msg in messages_to_save:
-            # Split timestamp into date and time
-            date, time = msg['timestamp'].split(' ')
-            writer.writerow({
-                'date': date,
-                'time': time,
-                'role': msg['role'],
-                'content': msg['content'],
-                'length': msg['length'],
-                'response_time': msg.get('response_time', '')
-            })
-    
-    # Upload CSV file
-    bucket = storage.bucket(st.secrets["FIREBASE"]["storage_bucket"])
-    blob = bucket.blob(f"chat_logs/{st.session_state['user'].uid}_{filename}")
-    blob.upload_from_filename(filename)
-    blob.make_public()
-    st.success(f"Chat log saved. Access it [here]({blob.public_url}).")
+    def initialize_session_state(self):
+        """Initialize or get session state variables"""
+        if "user" not in st.session_state:
+            st.session_state.user = None
+        if "current_conversation_id" not in st.session_state:
+            st.session_state.current_conversation_id = None
+        if "messages" not in st.session_state:
+            st.session_state.messages = []
 
+    def create_new_conversation(self, user_id: str) -> str:
+        """Create a new conversation in Firestore"""
+        conversation_ref = db.collection('conversations').document()
+        conversation_data = {
+            'user_id': user_id,
+            'created_at': datetime.now(self.london_tz),
+            'updated_at': datetime.now(self.london_tz),
+            'title': 'New Essay Session',
+            'status': 'active'
+        }
+        conversation_ref.set(conversation_data)
+        return conversation_ref.id
 
-# Function to handle chat
-def handle_chat(prompt):
-    st.session_state["messages"].append(add_timestamp({"role": "user", "content": prompt}))
-    st.chat_message("user").write(prompt)
-    
-    # Simulate AI response
-    response = OpenAI(api_key=st.secrets["default"]["OPENAI_API_KEY"]).chat.completions.create(
-        model="gpt-4o-mini",
-        messages=st.session_state["messages"],
-        temperature=0,
-        presence_penalty=0.5,   # Penalizes repeating ideas
-        frequency_penalty=0.5,  # Penalizes repeating words too frequently
-        max_tokens=200
-    )
-    st.session_state["messages"].append(add_timestamp({"role": "assistant", "content": response.choices[0].message.content}))
-    st.chat_message("assistant").write(response.choices[0].message.content)
-    
-    save_chat_log()
+    def load_conversation(self, conversation_id: str):
+        """Load a specific conversation from Firestore"""
+        messages = (db.collection('conversations')
+                   .document(conversation_id)
+                   .collection('messages')
+                   .order_by('timestamp')
+                   .stream())
+        
+        st.session_state.messages = [msg.to_dict() for msg in messages]
+        st.session_state.current_conversation_id = conversation_id
 
-# Login/Register logic
-if 'logged_in' not in st.session_state:
-    st.session_state['logged_in'] = False
-    st.session_state['user'] = None
+    def save_message(self, message: dict):
+        """Save a message to the current conversation"""
+        if not st.session_state.current_conversation_id:
+            st.session_state.current_conversation_id = self.create_new_conversation(
+                st.session_state.user.uid
+            )
 
-if not st.session_state['logged_in']:
-    st.title("Login")
-	
-    email = st.text_input("Email")
-    password = st.text_input("Password", type="password")
-	# Commented out the Register button and its logic
-    #if st.button("Register"):
-     #   user = auth.create_user(email=email, password=password)
-      #  st.session_state['logged_in'] = True
-       # st.session_state['user'] = user
-    # elif st.button("Login"):
-    if st.button("Login"):
-        user = auth.get_user_by_email(email)
-        st.session_state['logged_in'] = True
-        st.session_state['user'] = user
-    st.stop()
+        message['timestamp'] = datetime.now(self.london_tz)
+        
+        # Save to Firestore
+        db.collection('conversations').document(st.session_state.current_conversation_id)\
+          .collection('messages').add(message)
+        
+        # Update conversation metadata
+        db.collection('conversations').document(st.session_state.current_conversation_id)\
+          .update({
+              'updated_at': datetime.now(self.london_tz),
+              'last_message': message['content'][:100]  # Store preview of last message
+          })
 
-# Chat UI
-st.title("💬 Essay Writing Assistant")
-if "messages" not in st.session_state:
-    st.session_state["messages"] = [
-        add_timestamp({"role": "system", "content": """
-Role: Essay Writing Assistant (300-500 words)
+    def get_user_conversations(self, user_id: str, limit: int = 10):
+        """Get recent conversations for the user"""
+        conversations = (db.collection('conversations')
+                        .where('user_id', '==', user_id)
+                        .where('status', '==', 'active')
+                        .order_by('updated_at', direction=firestore.Query.DESCENDING)
+                        .limit(limit)
+                        .stream())
+        
+        return [{'id': conv.id, **conv.to_dict()} for conv in conversations]
+
+    def render_sidebar(self):
+        """Render the sidebar with conversation history"""
+        with st.sidebar:
+            st.title("💬 Conversations")
+            
+            # New Chat button
+            if st.button("+ New Essay", key="new_chat"):
+                st.session_state.messages = []
+                st.session_state.current_conversation_id = None
+                st.experimental_rerun()
+            
+            st.markdown("---")
+            
+            # Display conversation history
+            conversations = self.get_user_conversations(st.session_state.user.uid)
+            for conv in conversations:
+                # Create a unique key for each button
+                button_key = f"conv_{conv['id']}"
+                
+                # Format the conversation preview
+                preview_text = conv.get('title', 'Untitled Essay')
+                timestamp = conv['updated_at'].strftime("%Y-%m-%d %H:%M")
+                
+                if st.button(
+                    f"{preview_text}\n{timestamp}",
+                    key=button_key,
+                    help="Click to load this conversation"
+                ):
+                    self.load_conversation(conv['id'])
+                    st.experimental_rerun()
+
+    def render_messages(self):
+        """Render chat messages"""
+        for msg in st.session_state.messages:
+            if msg["role"] != "system":
+                # Determine message style based on role
+                style_class = "assistant-message" if msg["role"] == "assistant" else "user-message"
+                
+                # Format timestamp
+                timestamp = msg["timestamp"].strftime("%H:%M")
+                
+                # Render message with metadata
+                st.markdown(f"""
+                    <div class="chat-message {style_class}">
+                        <div class="message-content">{msg["content"]}</div>
+                        <div class="message-metadata">{timestamp}</div>
+                    </div>
+                """, unsafe_allow_html=True)
+
+    def handle_chat_input(self):
+        """Handle chat input and responses"""
+        if prompt := st.chat_input("Type your message here..."):
+            # Create user message
+            user_message = {
+                "role": "user",
+                "content": prompt
+            }
+            
+            # Add to session state and save to Firestore
+            st.session_state.messages.append(user_message)
+            self.save_message(user_message)
+            
+            # Get AI response
+            response = OpenAI(api_key=st.secrets["default"]["OPENAI_API_KEY"]).chat.completions.create(
+                model="gpt-4-0125-preview",
+                messages=[
+                    {"role": "system", "content": """Role: Essay Writing Assistant (300-500 words)
 Response Length: Keep answers brief and to the point. Max. 75 words per response.
 Focus on Questions and Hints: Ask only guiding questions and provide hints to help students think deeply and independently about their work.
 Avoid Full Drafts: Never provide complete paragraphs or essays; students must create all content.
@@ -188,35 +294,73 @@ Additional Guidelines:
 	• Active Participation: Always pause after questions or feedback, allowing students to revise independently.
 	• Clarification: If the student’s response is unclear, always ask for more details before proceeding.
 	• Student Voice: Help the student preserve their unique style and voice, and avoid imposing your own suggestions on the writing.
-	• Strengthening Arguments: Emphasize the importance of logical reasoning, credible evidence, and effectively refuting counterarguments throughout the writing process.
-	"""}),
+	• Strengthening Arguments: Emphasize the importance of logical reasoning, credible evidence, and effectively refuting counterarguments throughout the writing process."""},
+                    *st.session_state.messages
+                ],
+                temperature=0,
+                presence_penalty=0.5,
+                frequency_penalty=0.5
+            )
+            
+            # Create assistant message
+            assistant_message = {
+                "role": "assistant",
+                "content": response.choices[0].message.content
+            }
+            
+            # Add to session state and save to Firestore
+            st.session_state.messages.append(assistant_message)
+            self.save_message(assistant_message)
+            
+            st.experimental_rerun()
 
-        add_timestamp({"role": "assistant", "content": "Hi there! Ready to start your essay? I'm here to guide and help you improve your argumentative essay writing skills with activities like:\n"
-               "1. **Topic Selection**\n"
-               "2. **Outlining**\n"
-               "3. **Drafting**\n"
-               "4. **Reviewing**\n"
-               "5. **Proofreading**\n\n"
-               "What topic are you interested in writing about? If you'd like suggestions, just let me know!"
-                      })
-    ]
-    save_chat_log()
+def login_page():
+    """Render login page"""
+    st.title("Welcome to Essay Writing Assistant")
+    
+    col1, col2 = st.columns([1, 1])
+    
+    with col1:
+        email = st.text_input("Email")
+    with col2:
+        password = st.text_input("Password", type="password")
+    
+    if st.button("Login"):
+        try:
+            user = auth.get_user_by_email(email)
+            st.session_state.user = user
+            st.session_state.logged_in = True
+            st.experimental_rerun()
+        except Exception as e:
+            st.error("Login failed. Please check your credentials.")
 
-# Display chat messages, excluding the system prompt
-for msg in st.session_state["messages"]:
-    if msg["role"] != "system":
-        st.chat_message(msg["role"]).write(f"[{msg['timestamp']}] {msg['content']}")
+def main():
+    # Initialize chat interface
+    chat = ChatInterface()
+    chat.initialize_session_state()
+    
+    # Check login status
+    if not st.session_state.get('logged_in', False):
+        login_page()
+        return
+    
+    # Render main interface
+    chat.render_sidebar()
+    
+    # Main chat area
+    st.title("Essay Writing Assistant")
+    
+    # Show current conversation title if it exists
+    if st.session_state.current_conversation_id:
+        conversation = db.collection('conversations').document(
+            st.session_state.current_conversation_id
+        ).get().to_dict()
+        st.markdown(f"<div class='conversation-title'>{conversation['title']}</div>",
+                   unsafe_allow_html=True)
+    
+    # Render messages and handle input
+    chat.render_messages()
+    chat.handle_chat_input()
 
-if prompt := st.chat_input():
-    handle_chat(prompt)
-
-# Function to keep the session alive
-def keep_alive():
-    while st.session_state['logged_in']:
-        # Send a keep-alive signal or perform a lightweight action
-        st.write("Keeping session alive...")
-        time.sleep(60)  # Wait for 60 seconds (1 minute)
-
-# Start the keep-alive process in a separate thread
-if st.session_state['logged_in']:
-    threading.Thread(target=keep_alive, daemon=True).start()
+if __name__ == "__main__":
+    main()
