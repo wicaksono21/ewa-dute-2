@@ -191,55 +191,27 @@ class ChatInterface:
                     st.rerun()
 
     def render_messages(self):
-        """Render chat messages"""
-        for msg in st.session_state.messages:
-            if msg["role"] != "system":
-                style_class = "assistant-message" if msg["role"] == "assistant" else "user-message"
-                timestamp = msg.get("timestamp", "")
-                
-                # Clean up content but preserve intentional line breaks
-                content = msg["content"].strip()
-                content = content.replace("\n\n\n", "\n\n")  # Convert triple to double newlines
-                
-                # Convert markdown
-                content = content.replace("**", "<strong>", 1)
-                content = content.replace("**", "</strong>", 1)
-                while "**" in content:
-                    content = content.replace("**", "<strong>", 1)
-                    content = content.replace("**", "</strong>", 1)
-                
-                # Add proper spacing for numbered lists
-                content = content.replace("\n1.", "\n\n1.")
-                
-                st.markdown(f"""
-                    <div class="chat-message {style_class}">
-                        <div class="message-content">{content}</div>
-                        <div class="message-timestamp">{timestamp}</div>
-                    </div>
-                """, unsafe_allow_html=True)
+    	for msg in st.session_state.messages:
+        	if msg["role"] != "system":
+            		st.chat_message(msg["role"]).write(f"[{msg['timestamp']}] {msg['content']}")
 
     def handle_chat_input(self):
         if prompt := st.chat_input("Type your message here..."):
             try:
-                # Create user message
-                current_time = datetime.now(self.london_tz)
-                user_message = {
-                    "role": "user",
-                    "content": prompt,
-                    "timestamp": current_time.strftime("%Y-%m-%d %H:%M")
-                }
+                # Add user message
+            	st.session_state.messages.append({
+                	"role": "user",
+                	"content": prompt,
+                	`"timestamp": current_time.strftime("%Y-%m-%d %H:%M")
+            	})
                 
-                # Add to session state and immediately display
-                st.session_state.messages.append(user_message)
-                self.render_messages()
-                
+                              
                 # Save to Firestore
-                firestore_user_message = {
-                    "role": "user",
-                    "content": prompt,
-                    "timestamp": current_time
-                }
-                self.save_message(firestore_user_message)
+            	self.save_message({
+                	"role": "user",
+                	"content": prompt,
+                	"timestamp": current_time
+            	})
                 
                 # Get AI response
                 with st.spinner('Getting response...'):
@@ -316,19 +288,24 @@ Additional Guidelines:
                         frequency_penalty=0.5
                     )
                     
-                    assistant_message = {
-                        "role": "assistant",
-                        "content": response.choices[0].message.content,
-                        "timestamp": datetime.now(self.london_tz).strftime("%Y-%m-%d %H:%M")
-                    }
-                    
-                    st.session_state.messages.append(assistant_message)
-                    firestore_assistant_message = {**assistant_message, "timestamp": datetime.now(self.london_tz)}
-                    self.save_message(firestore_assistant_message)
-                    self.render_messages()
-                    
-            except Exception as e:
-                st.error(f"Error in chat handling: {str(e)}") 
+                   # Add assistant response
+                   st.session_state.messages.append({
+                   	 "role": "assistant",
+                    	 "content": response.choices[0].message.content,
+                    	"timestamp": datetime.now(self.london_tz).strftime("%Y-%m-%d %H:%M")
+                    })
+                
+               	 # Save assistant response
+                self.save_message({
+                    "role": "assistant",
+                    "content": response.choices[0].message.content,
+                    "timestamp": datetime.now(self.london_tz)
+                })
+            
+            st.rerun()
+            
+        except Exception as e:
+            st.error(f"Error in chat handling: {str(e)}")
    
 
 def login_page():
