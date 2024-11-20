@@ -210,7 +210,7 @@ class ChatApp:
     def render_messages(self):
         for msg in st.session_state.messages:
             if msg["role"] != "system":
-                st.chat_message(msg["role"]).write(f"{self.format_time()}] {msg['content']}")
+                st.chat_message(msg["role"]).write(f"[{self.format_time()}] {msg['content']}")
     
     def login(self, email, password):
         try:
