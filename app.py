@@ -351,88 +351,73 @@ Additional Guidelines:
                 st.error(f"Error in chat handling: {str(e)}")
 
 def login_page():
+    """Render login page"""
+    # Add custom CSS for login page
     st.markdown("""
         <style>
-            /* Login page specific styles */
-            .element-container input {
-                color: black !important;
+            /* Make text visible */
+            .stTextInput label {
+                color: white !important;
+                font-size: 1rem;
             }
-            .stTextInput > label {
-                color: black !important;
-            }
-            [data-testid="stForm"] {
+            
+            /* Input fields */
+            .stTextInput input {
                 background-color: white;
-                padding: 2rem;
-                border-radius: 0.5rem;
-            }
-            .main {
-                background-color: white;
-            }
-            /* Make all text visible */
-            label {
                 color: black !important;
+                border: 1px solid #e5e5e5;
+                padding: 0.5rem;
+                border-radius: 0.25rem;
             }
-            div {
-                color: black !important;
+            
+            /* Login button */
+            .stButton > button {
+                background-color: #343541 !important;
+                color: white !important;
+                border: 1px solid #565869 !important;
+                padding: 0.5rem;
+                width: 100%;
             }
+            
+            .stButton > button:hover {
+                border-color: #ffffff !important;
+            }
+            
+            /* Title */
             h1 {
-                color: black !important;
+                color: white !important;
+                font-size: 2rem;
+                margin-bottom: 2rem;
+            }
+            
+            /* Error message */
+            .stAlert {
+                color: #ff4b4b !important;
             }
         </style>
-        <div style="text-align: center; color: black; margin-bottom: 2rem;">
-            <h1>Essay Writing Assistant</h1>
-        </div>
     """, unsafe_allow_html=True)
     
-    # Make the form background white
-    with st.container():
-        st.markdown("""
-            <div style="
-                background-color: white;
-                padding: 2rem;
-                border-radius: 0.5rem;
-                max-width: 400px;
-                margin: 0 auto;
-            ">
-            </div>
-        """, unsafe_allow_html=True)
-        
-        col1, col2, col3 = st.columns([1,2,1])
-        
-        with col2:
-            # Add labels with explicit black color
-            st.markdown('<p style="color: black;">Email</p>', unsafe_allow_html=True)
-            email = st.text_input("", key="email", placeholder="Enter your email")
-            
-            st.markdown('<p style="color: black;">Password</p>', unsafe_allow_html=True)
-            password = st.text_input("", type="password", key="password", placeholder="Enter your password")
-            
-            # Style the button
-            st.markdown("""
-                <style>
-                    .stButton > button {
-                        background-color: #2b2c2d;
-                        color: white !important;
-                        border: none;
-                        padding: 0.5rem 1rem;
-                        width: 100%;
-                        margin-top: 1rem;
-                    }
-                    .stButton > button:hover {
-                        background-color: #404142;
-                    }
-                </style>
-            """, unsafe_allow_html=True)
-            
-            if st.button("Login", use_container_width=True):
-                try:
-                    user = auth.get_user_by_email(email)
-                    st.session_state.user = user
-                    st.session_state.logged_in = True
-                    st.session_state.last_activity = datetime.now()
-                    st.rerun()
-                except Exception as e:
-                    st.error("Login failed. Please check your credentials.")
+    # Title
+    st.markdown("<h1>Essay Writing Assistant</h1>", unsafe_allow_html=True)
+    
+    # Simple two-column layout for login form
+    col1, col2 = st.columns([1, 1])
+    
+    with col1:
+        email = st.text_input("Email")
+    with col2:
+        password = st.text_input("Password", type="password")
+    
+    # Login button
+    if st.button("Login", use_container_width=True):
+        try:
+            user = auth.get_user_by_email(email)
+            st.session_state.user = user
+            st.session_state.logged_in = True
+            st.session_state.last_activity = datetime.now()
+            st.rerun()
+        except Exception as e:
+            st.error("Login failed. Please check your credentials.")
 
 def check_session_timeout():
     """Check if the session has timed out"""
