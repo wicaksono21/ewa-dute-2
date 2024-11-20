@@ -136,7 +136,7 @@ class ChatInterface:
             st.error(f"Error creating new conversation: {str(e)}")
             return None
 
-   def load_conversation(self, conversation_id: str):
+  def load_conversation(self, conversation_id: str):
         """Load a specific conversation from Firestore"""
         try:
             messages = (db.collection('conversations')
