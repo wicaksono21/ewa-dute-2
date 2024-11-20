@@ -352,47 +352,54 @@ Additional Guidelines:
 
 def login_page():
     """Render login page"""
-    # Add custom CSS for login page
+    # Custom CSS for centered layout and visible text
     st.markdown("""
         <style>
-            /* Make text visible */
+            [data-testid="stVerticalBlock"] {
+                gap: 0px;
+            }
+            
+            [data-testid="stForm"] {
+                max-width: 640px;
+                margin: 0 auto;
+                padding: 40px;
+            }
+            
+            /* Title text */
+            h1 {
+                color: white !important;
+                font-weight: normal;
+                margin-bottom: 2rem;
+            }
+            
+            /* Input labels */
             .stTextInput label {
                 color: white !important;
-                font-size: 1rem;
+                font-weight: normal;
             }
             
             /* Input fields */
             .stTextInput input {
-                background-color: white;
-                color: black !important;
-                border: 1px solid #e5e5e5;
-                padding: 0.5rem;
-                border-radius: 0.25rem;
+                background-color: #1e1e1e;
+                border: 1px solid rgba(255, 255, 255, 0.2);
+                padding: 10px;
+                color: white !important;
+                border-radius: 4px;
             }
             
             /* Login button */
-            .stButton > button {
-                background-color: #343541 !important;
+            .stButton button {
+                background-color: transparent !important;
                 color: white !important;
-                border: 1px solid #565869 !important;
-                padding: 0.5rem;
+                border: 1px solid rgba(255, 255, 255, 0.2) !important;
+                border-radius: 4px;
+                padding: 10px;
                 width: 100%;
+                margin-top: 10px;
             }
             
-            .stButton > button:hover {
-                border-color: #ffffff !important;
-            }
-            
-            /* Title */
-            h1 {
-                color: white !important;
-                font-size: 2rem;
-                margin-bottom: 2rem;
-            }
-            
-            /* Error message */
-            .stAlert {
-                color: #ff4b4b !important;
+            .stButton button:hover {
+                border-color: white !important;
             }
         </style>
     """, unsafe_allow_html=True)
@@ -400,24 +407,25 @@ def login_page():
     # Title
     st.markdown("<h1>Essay Writing Assistant</h1>", unsafe_allow_html=True)
     
-    # Simple two-column layout for login form
-    col1, col2 = st.columns([1, 1])
-    
-    with col1:
-        email = st.text_input("Email")
-    with col2:
-        password = st.text_input("Password", type="password")
-    
-    # Login button
-    if st.button("Login", use_container_width=True):
-        try:
-            user = auth.get_user_by_email(email)
-            st.session_state.user = user
-            st.session_state.logged_in = True
-            st.session_state.last_activity = datetime.now()
-            st.rerun()
-        except Exception as e:
-            st.error("Login failed. Please check your credentials.")
+    # Center the form
+    with st.container():
+        # Create some vertical space
+        for _ in range(2):
+            st.write("")
+            
+        col1, col2, col3 = st.columns([1, 2, 1])
+        with col2:
+            email = st.text_input("Email")
+            password = st.text_input("Password", type="password")
+            if st.button("Login", use_container_width=True):
+                try:
+                    user = auth.get_user_by_email(email)
+                    st.session_state.user = user
+                    st.session_state.logged_in = True
+                    st.session_state.last_activity = datetime.now()
+                    st.rerun()
+                except Exception as e:
+                    st.error("Login failed. Please check your credentials.")
 
 def check_session_timeout():
     """Check if the session has timed out"""
