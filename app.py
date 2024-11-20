@@ -352,45 +352,28 @@ Additional Guidelines:
 
 def login_page():
     """Render login page"""
-    # Custom CSS for centered layout and visible text
+    # Custom CSS for centered layout and white text
     st.markdown("""
         <style>
-            [data-testid="stVerticalBlock"] {
-                gap: 0px;
-            }
-            
-            [data-testid="stForm"] {
-                max-width: 640px;
-                margin: 0 auto;
-                padding: 40px;
-            }
-            
-            /* Title text */
-            h1 {
-                color: white !important;
-                font-weight: normal;
-                margin-bottom: 2rem;
-            }
-            
-            /* Input labels */
+            /* Remove default Streamlit labels */
             .stTextInput label {
-                color: white !important;
-                font-weight: normal;
+                display: none;
             }
             
             /* Input fields */
             .stTextInput input {
-                background-color: #1e1e1e;
+                background-color: white;
                 border: 1px solid rgba(255, 255, 255, 0.2);
                 padding: 10px;
-                color: white !important;
+                color: black !important;
                 border-radius: 4px;
+                margin-top: 5px;
+                width: 100%;
             }
             
             /* Login button */
             .stButton button {
                 background-color: transparent !important;
-                color: white !important;
                 border: 1px solid rgba(255, 255, 255, 0.2) !important;
                 border-radius: 4px;
                 padding: 10px;
@@ -398,8 +381,23 @@ def login_page():
                 margin-top: 10px;
             }
             
-            .stButton button:hover {
-                border-color: white !important;
+            /* Button text color */
+            .stButton button p {
+                color: white !important;
+            }
+            
+            /* Custom labels */
+            .custom-label {
+                color: white !important;
+                font-size: 0.9rem;
+                margin-bottom: 5px;
+                display: block;
+            }
+            
+            /* Title */
+            h1 {
+                color: white !important;
+                margin-bottom: 2rem;
             }
         </style>
     """, unsafe_allow_html=True)
@@ -415,8 +413,15 @@ def login_page():
             
         col1, col2, col3 = st.columns([1, 2, 1])
         with col2:
-            email = st.text_input("Email")
-            password = st.text_input("Password", type="password")
+            # Email field with white label
+            st.markdown("<label class='custom-label'>Email</label>", unsafe_allow_html=True)
+            email = st.text_input(" ", key="email")  # Space as label to maintain layout
+            
+            # Password field with white label
+            st.markdown("<label class='custom-label'>Password</label>", unsafe_allow_html=True)
+            password = st.text_input(" ", type="password", key="password")  # Space as label to maintain layout
+            
+            # Login button
             if st.button("Login", use_container_width=True):
                 try:
                     user = auth.get_user_by_email(email)
