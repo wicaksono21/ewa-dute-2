@@ -258,7 +258,7 @@ class ChatInterface:
                     </div>
                 """, unsafe_allow_html=True)
 
-  def handle_chat_input(self):
+    def handle_chat_input(self):
         """Handle chat input and responses"""
         if prompt := st.chat_input("Type your message here..."):
             try:
