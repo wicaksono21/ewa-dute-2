@@ -2,9 +2,8 @@ import streamlit as st
 import firebase_admin
 from firebase_admin import credentials, auth, firestore
 from openai import OpenAI
-from datetime import datetime
+from datetime import datetime, timedelta
 import pytz
-import uuid
 
 # Page configuration
 st.set_page_config(
@@ -87,10 +86,16 @@ st.markdown("""
             margin-bottom: 1rem;
             border-bottom: 1px solid #e5e5e5;
         }
+
+        /* Loading spinner */
+        .stSpinner {
+            text-align: center;
+            margin: 1rem 0;
+        }
     </style>
 """, unsafe_allow_html=True)
 
-# Initialize Firebase if not already initialized
+# Initialize Firebase
 if not firebase_admin._apps:
     cred = credentials.Certificate(dict(st.secrets["FIREBASE"]))
     firebase_admin.initialize_app(cred)
@@ -110,61 +115,98 @@ class ChatInterface:
             st.session_state.current_conversation_id = None
         if "messages" not in st.session_state:
             st.session_state.messages = []
+        if "last_activity" not in st.session_state:
+            st.session_state.last_activity = datetime.now()
 
     def create_new_conversation(self, user_id: str) -> str:
         """Create a new conversation in Firestore"""
-        conversation_ref = db.collection('conversations').document()
-        conversation_data = {
-            'user_id': user_id,
-            'created_at': datetime.now(self.london_tz),
-            'updated_at': datetime.now(self.london_tz),
-            'title': 'New Essay Session',
-            'status': 'active'
-        }
-        conversation_ref.set(conversation_data)
-        return conversation_ref.id
+        try:
+            conversation_ref = db.collection('conversations').document()
+            current_time = datetime.now(self.london_tz)
+            conversation_data = {
+                'user_id': user_id,
+                'created_at': current_time,
+                'updated_at': current_time,
+                'title': f"Essay {current_time.strftime('%Y-%m-%d %H:%M')}",
+                'status': 'active'
+            }
+            conversation_ref.set(conversation_data)
+            return conversation_ref.id
+        except Exception as e:
+            st.error(f"Error creating new conversation: {str(e)}")
+            return None
 
     def load_conversation(self, conversation_id: str):
         """Load a specific conversation from Firestore"""
-        messages = (db.collection('conversations')
-                   .document(conversation_id)
-                   .collection('messages')
-                   .order_by('timestamp')
-                   .stream())
-        
-        st.session_state.messages = [msg.to_dict() for msg in messages]
-        st.session_state.current_conversation_id = conversation_id
+        try:
+            messages = (db.collection('conversations')
+                       .document(conversation_id)
+                       .collection('messages')
+                       .order_by('timestamp')
+                       .stream())
+            
+            # Convert Firestore timestamps when loading messages
+            formatted_messages = []
+            for msg in messages:
+                msg_dict = msg.to_dict()
+                # Handle timestamp
+                if 'timestamp' in msg_dict and hasattr(msg_dict['timestamp'], 'strftime'):
+                    msg_dict['timestamp'] = msg_dict['timestamp'].strftime("%Y-%m-%d %H:%M")
+                formatted_messages.append(msg_dict)
+            
+            st.session_state.messages = formatted_messages
+            st.session_state.current_conversation_id = conversation_id
+        except Exception as e:
+            st.error(f"Error loading conversation: {str(e)}")
 
     def save_message(self, message: dict):
         """Save a message to the current conversation"""
-        if not st.session_state.current_conversation_id:
-            st.session_state.current_conversation_id = self.create_new_conversation(
-                st.session_state.user.uid
-            )
+        try:
+            if not st.session_state.current_conversation_id:
+                st.session_state.current_conversation_id = self.create_new_conversation(
+                    st.session_state.user.uid
+                )
 
-        message['timestamp'] = datetime.now(self.london_tz)
-        
-        # Save to Firestore
-        db.collection('conversations').document(st.session_state.current_conversation_id)\
-          .collection('messages').add(message)
-        
-        # Update conversation metadata
-        db.collection('conversations').document(st.session_state.current_conversation_id)\
-          .update({
-              'updated_at': datetime.now(self.london_tz),
-              'last_message': message['content'][:100]  # Store preview of last message
-          })
+            current_time = datetime.now(self.london_tz)
+            message['timestamp'] = current_time
+            
+            # Save to Firestore
+            db.collection('conversations').document(st.session_state.current_conversation_id)\
+              .collection('messages').add(message)
+            
+            # Update conversation metadata
+            db.collection('conversations').document(st.session_state.current_conversation_id)\
+              .update({
+                  'updated_at': current_time,
+                  'last_message': message['content'][:100]
+              })
+        except Exception as e:
+            st.error(f"Error saving message: {str(e)}")
 
     def get_user_conversations(self, user_id: str, limit: int = 10):
         """Get recent conversations for the user"""
-        conversations = (db.collection('conversations')
-                        .where('user_id', '==', user_id)
-                        .where('status', '==', 'active')
-                        .order_by('updated_at', direction=firestore.Query.DESCENDING)
-                        .limit(limit)
-                        .stream())
-        
-        return [{'id': conv.id, **conv.to_dict()} for conv in conversations]
+        try:
+            conversations = (db.collection('conversations')
+                            .where('user_id', '==', user_id)
+                            .order_by('updated_at', direction=firestore.Query.DESCENDING)
+                            .limit(limit)
+                            .stream())
+            
+            # Convert Firestore timestamps when returning
+            formatted_conversations = []
+            for conv in conversations:
+                conv_dict = conv.to_dict()
+                # Handle timestamps
+                if 'created_at' in conv_dict and hasattr(conv_dict['created_at'], 'strftime'):
+                    conv_dict['created_at'] = conv_dict['created_at'].strftime("%Y-%m-%d %H:%M")
+                if 'updated_at' in conv_dict and hasattr(conv_dict['updated_at'], 'strftime'):
+                    conv_dict['updated_at'] = conv_dict['updated_at'].strftime("%Y-%m-%d %H:%M")
+                formatted_conversations.append({'id': conv.id, **conv_dict})
+            
+            return formatted_conversations
+        except Exception as e:
+            st.error(f"Error getting conversations: {str(e)}")
+            return []
 
     def render_sidebar(self):
         """Render the sidebar with conversation history"""
@@ -187,7 +229,7 @@ class ChatInterface:
                 
                 # Format the conversation preview
                 preview_text = conv.get('title', 'Untitled Essay')
-                timestamp = conv['updated_at'].strftime("%Y-%m-%d %H:%M")
+                timestamp = conv.get('updated_at', 'No date')
                 
                 if st.button(
                     f"{preview_text}\n{timestamp}",
@@ -205,7 +247,12 @@ class ChatInterface:
                 style_class = "assistant-message" if msg["role"] == "assistant" else "user-message"
                 
                 # Format timestamp
-                timestamp = msg["timestamp"].strftime("%H:%M")
+                timestamp = msg.get("timestamp", "No time")
+                if isinstance(timestamp, datetime):
+                    timestamp = timestamp.strftime("%H:%M")
+                elif isinstance(timestamp, str):
+                    # Keep the string format if it's already a string
+                    pass
                 
                 # Render message with metadata
                 st.markdown(f"""
@@ -218,21 +265,23 @@ class ChatInterface:
     def handle_chat_input(self):
         """Handle chat input and responses"""
         if prompt := st.chat_input("Type your message here..."):
-            # Create user message
-            user_message = {
-                "role": "user",
-                "content": prompt
-            }
-            
-            # Add to session state and save to Firestore
-            st.session_state.messages.append(user_message)
-            self.save_message(user_message)
-            
-            # Get AI response
-            response = OpenAI(api_key=st.secrets["default"]["OPENAI_API_KEY"]).chat.completions.create(
-                model="gpt-4-0125-preview",
-                messages=[
-                    {"role": "system", "content": """Role: Essay Writing Assistant (300-500 words)
+            try:
+                # Create user message
+                user_message = {
+                    "role": "user",
+                    "content": prompt
+                }
+                
+                # Add to session state and save to Firestore
+                st.session_state.messages.append(user_message)
+                self.save_message(user_message)
+                
+                # Get AI response with loading spinner
+                with st.spinner('Getting response...'):
+                    response = OpenAI(api_key=st.secrets["default"]["OPENAI_API_KEY"]).chat.completions.create(
+                        model="gpt-4-0125-preview",
+                        messages=[
+                            {"role": "system", "content": """Role: Essay Writing Assistant (300-500 words)
 Response Length: Keep answers brief and to the point. Max. 75 words per response.
 Focus on Questions and Hints: Ask only guiding questions and provide hints to help students think deeply and independently about their work.
 Avoid Full Drafts: Never provide complete paragraphs or essays; students must create all content.
@@ -295,24 +344,26 @@ Additional Guidelines:
 	• Clarification: If the student’s response is unclear, always ask for more details before proceeding.
 	• Student Voice: Help the student preserve their unique style and voice, and avoid imposing your own suggestions on the writing.
 	• Strengthening Arguments: Emphasize the importance of logical reasoning, credible evidence, and effectively refuting counterarguments throughout the writing process."""},
-                    *st.session_state.messages
-                ],
-                temperature=0,
-                presence_penalty=0.5,
-                frequency_penalty=0.5
-            )
-            
-            # Create assistant message
-            assistant_message = {
-                "role": "assistant",
-                "content": response.choices[0].message.content
-            }
-            
-            # Add to session state and save to Firestore
-            st.session_state.messages.append(assistant_message)
-            self.save_message(assistant_message)
-            
-            st.experimental_rerun()
+                            *st.session_state.messages
+                        ],
+                        temperature=0,
+                        presence_penalty=0.5,
+                        frequency_penalty=0.5
+                    )
+                    
+                    # Create assistant message
+                    assistant_message = {
+                        "role": "assistant",
+                        "content": response.choices[0].message.content
+                    }
+                    
+                    # Add to session state and save to Firestore
+                    st.session_state.messages.append(assistant_message)
+                    self.save_message(assistant_message)
+                    
+                st.experimental_rerun()
+            except Exception as e:
+                st.error(f"Error in chat handling: {str(e)}")
 
 def login_page():
     """Render login page"""
@@ -330,14 +381,31 @@ def login_page():
             user = auth.get_user_by_email(email)
             st.session_state.user = user
             st.session_state.logged_in = True
+            st.session_state.last_activity = datetime.now()
             st.experimental_rerun()
         except Exception as e:
             st.error("Login failed. Please check your credentials.")
+
+def check_session_timeout():
+    """Check if the session has timed out"""
+    if 'last_activity' in st.session_state:
+        if (datetime.now() - st.session_state.last_activity).seconds > 3600:  # 1 hour
+            st.session_state.clear()
+            return True
+    return False
 
 def main():
     # Initialize chat interface
     chat = ChatInterface()
     chat.initialize_session_state()
+    
+    # Check session timeout
+    if check_session_timeout():
+        st.warning("Session expired. Please login again.")
+        st.experimental_rerun()
+    
+    # Update last activity
+    st.session_state.last_activity = datetime.now()
     
     # Check login status
     if not st.session_state.get('logged_in', False):
@@ -352,11 +420,15 @@ def main():
     
     # Show current conversation title if it exists
     if st.session_state.current_conversation_id:
-        conversation = db.collection('conversations').document(
-            st.session_state.current_conversation_id
-        ).get().to_dict()
-        st.markdown(f"<div class='conversation-title'>{conversation['title']}</div>",
-                   unsafe_allow_html=True)
+        try:
+            conversation = db.collection('conversations').document(
+                st.session_state.current_conversation_id
+            ).get().to_dict()
+            if conversation:
+                st.markdown(f"<div class='conversation-title'>{conversation['title']}</div>",
+                           unsafe_allow_html=True)
+        except Exception as e:
+            st.error(f"Error loading conversation title: {str(e)}")
     
     # Render messages and handle input
     chat.render_messages()
