@@ -105,7 +105,7 @@ class ChatApp:
         
     def format_time(self, dt=None):
         dt = dt or datetime.now(self.tz)
-        return dt.strftime("%Y-%m-%d %H:%M")
+        return dt.strftime("[%Y-%m-%d %H:%M:%S]")
     
     def get_conversations(self, user_id):
         return db.collection('conversations')\
@@ -210,7 +210,7 @@ class ChatApp:
     def render_messages(self):
         for msg in st.session_state.messages:
             if msg["role"] != "system":
-                st.chat_message(msg["role"]).write(f"[{msg['timestamp']}] {msg['content']}")
+                st.chat_message(msg["role"]).write(f"{self.format_time()}] {msg['content']}")
     
     def login(self, email, password):
         try:
