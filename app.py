@@ -230,8 +230,9 @@ class ChatInterface:
                     "timestamp": current_time.strftime("%Y-%m-%d %H:%M")
                 }
                 
-                # Add to session state
-                st.session_state.messages.append(user_message)
+                # Add to session state and immediately display
+            	st.session_state.messages.append(user_message)
+            	self.render_messages()  # Display all messages including new user message
                 
                 # For Firestore, use datetime
                 firestore_user_message = {
@@ -323,20 +324,16 @@ Additional Guidelines:
                         "timestamp": datetime.now(self.london_tz).strftime("%Y-%m-%d %H:%M")
                     }
                     
-                    # Add to session state
+                    # Add to session state and save to Firestore
                     st.session_state.messages.append(assistant_message)
-                    
-                    # For Firestore, use datetime
-                    firestore_assistant_message = {
-                        "role": "assistant",
-                        "content": response.choices[0].message.content,
-                        "timestamp": datetime.now(self.london_tz)
-                    }
+                    firestore_assistant_message = {**assistant_message, "timestamp": datetime.now(self.london_tz)}
                     self.save_message(firestore_assistant_message)
-                    
-                st.rerun()
-            except Exception as e:
-                st.error(f"Error in chat handling: {str(e)}")
+                
+                     # Display updated messages
+                     self.render_messages()
+                
+        	except Exception as e:
+            	    st.error(f"Error in chat handling: {str(e)}")
 
 def login_page():
     st.markdown("""
