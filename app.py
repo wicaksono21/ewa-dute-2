@@ -38,10 +38,8 @@ if not firebase_admin._apps:
     cred = credentials.Certificate(dict(st.secrets["FIREBASE"]))
     firebase_admin.initialize_app(cred)
 
-# Initialize Firestore
 db = firestore.client()
 
-# Define initial assistant message with proper formatting
 INITIAL_ASSISTANT_MESSAGE = {
     "role": "assistant",
     "content": """Hi there! Ready to start your essay? I'm here to guide and help you improve your argumentative essay writing skills with activities like:
@@ -60,7 +58,6 @@ class ChatInterface:
         self.london_tz = pytz.timezone("Europe/London")
         
     def initialize_session_state(self):
-        """Initialize or get session state variables"""
         if "user" not in st.session_state:
             st.session_state.user = None
         if "current_conversation_id" not in st.session_state:
@@ -83,7 +80,6 @@ class ChatInterface:
             }
             conversation_ref.set(conversation_data)
 
-            # Add initial assistant message
             initial_message = {
                 **INITIAL_ASSISTANT_MESSAGE,
                 "timestamp": current_time
@@ -97,7 +93,6 @@ class ChatInterface:
             return None
 
     def load_conversation(self, conversation_id: str):
-        """Load a specific conversation from Firestore"""
         try:
             messages = (db.collection('conversations')
                        .document(conversation_id)
@@ -105,7 +100,6 @@ class ChatInterface:
                        .order_by('timestamp')
                        .stream())
             
-            # Convert Firestore timestamps to strings
             formatted_messages = []
             for msg in messages:
                 msg_dict = msg.to_dict()
@@ -119,18 +113,15 @@ class ChatInterface:
             st.error(f"Error loading conversation: {str(e)}")
 
     def save_message(self, message: dict):
-        """Save message to Firestore"""
         try:
             if not st.session_state.current_conversation_id:
                 st.session_state.current_conversation_id = self.create_new_conversation(
                     st.session_state.user.uid
                 )
 
-            # Save to Firestore (message already contains datetime timestamp)
             db.collection('conversations').document(st.session_state.current_conversation_id)\
                 .collection('messages').add(message)
             
-            # Update conversation metadata
             db.collection('conversations').document(st.session_state.current_conversation_id)\
                 .update({
                     'updated_at': message['timestamp'],
@@ -140,7 +131,6 @@ class ChatInterface:
             st.error(f"Error saving message: {str(e)}")
 
     def get_user_conversations(self, user_id: str, limit: int = 10):
-        """Get recent conversations for the user"""
         try:
             conversations = (db.collection('conversations')
                             .where(filter=FieldFilter("user_id", "==", user_id))
@@ -148,15 +138,11 @@ class ChatInterface:
                             .limit(limit)
                             .stream())
             
-            # Convert Firestore timestamps when returning
             formatted_conversations = []
             for conv in conversations:
                 conv_dict = conv.to_dict()
-                # Handle timestamps
-                if 'created_at' in conv_dict and hasattr(conv_dict['created_at'], 'strftime'):
-                    conv_dict['created_at'] = conv_dict['created_at'].strftime("%Y-%m-%d %H:%M")
                 if 'updated_at' in conv_dict and hasattr(conv_dict['updated_at'], 'strftime'):
-                    conv_dict['updated_at'] = conv_dict['updated_at'].strftime("%Y-%m-%d %H:%M")
+                    conv_dict['updated_at'] = conv_dict['updated_at'].strftime("%Y-%m-%d")
                 formatted_conversations.append({'id': conv.id, **conv_dict})
             
             return formatted_conversations
@@ -169,7 +155,6 @@ class ChatInterface:
             st.markdown('<h2 style="color: white;">Essay Writing Assistant</h2>', unsafe_allow_html=True)
             
             if st.button("+ New Essay", key="new_chat", use_container_width=True):
-                # Initialize new conversation with welcome message
                 current_time = datetime.now(self.london_tz)
                 st.session_state.messages = [{
                     **INITIAL_ASSISTANT_MESSAGE,
@@ -191,27 +176,28 @@ class ChatInterface:
                     st.rerun()
 
     def render_messages(self):
-    	for msg in st.session_state.messages:
-        	if msg["role"] != "system":
-            		st.chat_message(msg["role"]).write(f"[{msg['timestamp']}] {msg['content']}")
+        for msg in st.session_state.messages:
+            if msg["role"] != "system":
+                st.chat_message(msg["role"]).write(f"[{msg['timestamp']}] {msg['content']}")
 
     def handle_chat_input(self):
         if prompt := st.chat_input("Type your message here..."):
             try:
-                # Add user message
-            	st.session_state.messages.append({
-                	"role": "user",
-                	"content": prompt,
-                	`"timestamp": current_time.strftime("%Y-%m-%d %H:%M")
-            	})
+                current_time = datetime.now(self.london_tz)
                 
-                              
+                # Add user message
+                st.session_state.messages.append({
+                    "role": "user",
+                    "content": prompt,
+                    "timestamp": current_time.strftime("%Y-%m-%d %H:%M")
+                })
+                
                 # Save to Firestore
-            	self.save_message({
-                	"role": "user",
-                	"content": prompt,
-                	"timestamp": current_time
-            	})
+                self.save_message({
+                    "role": "user",
+                    "content": prompt,
+                    "timestamp": current_time
+                })
                 
                 # Get AI response
                 with st.spinner('Getting response...'):
@@ -280,33 +266,33 @@ Additional Guidelines:
 	• Active Participation: Always pause after questions or feedback, allowing students to revise independently.
 	• Clarification: If the student’s response is unclear, always ask for more details before proceeding.
 	• Student Voice: Help the student preserve their unique style and voice, and avoid imposing your own suggestions on the writing.
-	• Strengthening Arguments: Emphasize the importance of logical reasoning, credible evidence, and effectively refuting counterarguments throughout the writing process."""},
-                            *[{"role": msg["role"], "content": msg["content"]} for msg in st.session_state.messages]
+• Strengthening Arguments: Emphasize the importance of logical reasoning, credible evidence, and effectively refuting counterarguments throughout the writing process."""},
+                            *[{"role": msg["role"], "content": msg["content"]} 
+                              for msg in st.session_state.messages]
                         ],
                         temperature=0,
                         presence_penalty=0.5,
                         frequency_penalty=0.5
                     )
                     
-                   # Add assistant response
-                st.session_state.messages.append({
-                    "role": "assistant",
-                    "content": response.choices[0].message.content,
-                    "timestamp": datetime.now(self.london_tz).strftime("%Y-%m-%d %H:%M")
-                })
+                    # Add assistant response
+                    st.session_state.messages.append({
+                        "role": "assistant",
+                        "content": response.choices[0].message.content,
+                        "timestamp": datetime.now(self.london_tz).strftime("%Y-%m-%d %H:%M")
+                    })
+                    
+                    # Save assistant response
+                    self.save_message({
+                        "role": "assistant",
+                        "content": response.choices[0].message.content,
+                        "timestamp": datetime.now(self.london_tz)
+                    })
                 
-                # Save assistant response
-                self.save_message({
-                    "role": "assistant",
-                    "content": response.choices[0].message.content,
-                    "timestamp": datetime.now(self.london_tz)
-                })
-            
-            st.rerun()
-            
-        except Exception as e:
-            st.error(f"Error in chat handling: {str(e)}")
-   
+                st.rerun()
+                
+            except Exception as e:
+                st.error(f"Error in chat handling: {str(e)}")
 
 def login_page():
     st.markdown("""
@@ -330,7 +316,6 @@ def login_page():
                 st.session_state.logged_in = True
                 st.session_state.last_activity = datetime.now()
                 
-                # Initialize first conversation with welcome message
                 current_time = datetime.now(pytz.timezone("Europe/London"))
                 st.session_state.messages = [{
                     **INITIAL_ASSISTANT_MESSAGE,
