@@ -136,7 +136,7 @@ class ChatInterface:
            st.error(f"Error creating new conversation: {str(e)}")
            return None
 
-  def load_conversation(self, conversation_id: str):
+    def load_conversation(self, conversation_id: str):
         """Load a specific conversation from Firestore"""
         try:
             messages = (db.collection('conversations')
@@ -160,7 +160,7 @@ class ChatInterface:
             st.error(f"Error loading conversation: {str(e)}")
 
 
-     def save_message(self, message: dict):
+    def save_message(self, message: dict):
         """Save a message to the current conversation"""
         try:
             if not st.session_state.current_conversation_id:
