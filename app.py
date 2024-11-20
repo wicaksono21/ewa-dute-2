@@ -14,134 +14,23 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Custom CSS for clean interface
+# Simple CSS
 st.markdown("""
     <style>
-        /* Global text colors */
-        .main * {
-            color: white !important;
+        .main {
+            max-width: 800px;
+            margin: 0 auto;
         }
-        
-        /* Sidebar styling */
-        .css-1d391kg {
-            background-color: #202123;
-        }
-        
-        .css-1d391kg * {
-            color: white !important;
-        }
-        
-        /* Sidebar buttons */
-        .stButton > button {
-            width: 100%;
-            text-align: left;
-            background-color: transparent !important;
-            border: 1px solid rgba(255, 255, 255, 0.2) !important;
-            color: white !important;
-            padding: 0.5rem;
-        }
-        
-        /* Chat message styling */
         .chat-message {
             padding: 1.5rem;
             margin: 1rem 0;
             border-radius: 0.5rem;
-            color: white !important;
-        }
-        
-        .user-message {
-            background-color: #343541;
-            border: 1px solid rgba(255, 255, 255, 0.1);
-        }
-        
-        .assistant-message {
             background-color: #444654;
-            border: 1px solid rgba(255, 255, 255, 0.1);
-        }
-        
-        /* Input field styling */
-        .stTextInput input, .stTextArea textarea {
-            color: white !important;
-            background-color: #40414f !important;
-            border: 1px solid rgba(255, 255, 255, 0.2) !important;
-        }
-        
-        /* Main chat input */
-        .stChatInput input {
-            color: white !important;
-            background-color: #40414f !important;
-            border: 1px solid rgba(255, 255, 255, 0.2) !important;
-        }
-        
-        /* Message content */
-        .message-content {
             color: white !important;
         }
-        
-        /* Timestamp */
-        .message-timestamp {
-            color: rgba(255, 255, 255, 0.5) !important;
-            font-size: 0.8rem;
-        }
-        
-        /* Headers and titles */
-        h1, h2, h3, h4, h5, h6 {
-            color: white !important;
-        }
-        
-        /* All text elements */
-        p, span, div {
-            color: white !important;
-        }
-        
-        /* Hide Streamlit branding */
         #MainMenu {visibility: hidden;}
         footer {visibility: hidden;}
-
- 	/* Update these CSS styles */
-	.message-content {
- 	color: white !important;
-    	white-space: pre-wrap;
-    	line-height: 1.6;
-    	padding: 0.5rem 0;
-	}
-
-	.message-content ol {
-    	margin: 1rem 0;
-    	padding-left: 2rem;
-	}
-
-	.message-content ol li {
-    	margin: 1.2rem 0;
-    	padding-left: 0.5rem;
-	}
-
-	.message-content strong {
-    	font-weight: 600;
-    	color: white !important;
-	}
-
-	/* Add spacing between sections */
-	.message-content > p {
-    	margin: 1rem 0;
-	}
-
-	/* Chat message container */
-	.chat-message {
-    	padding: 1.5rem;
-    	margin: 1rem 0;
-    	border-radius: 0.5rem;
-    	background-color: #444654;
-    	border: 1px solid rgba(255, 255, 255, 0.1);
-	}
-
-	/* Make timestamps less prominent */
-	.message-timestamp {
-    	color: rgba(255, 255, 255, 0.5) !important;
-    	font-size: 0.8rem;
-    	margin-top: 1rem;
-	
-	    </style>
+    </style>
 """, unsafe_allow_html=True)
 
 # Initialize Firebase
