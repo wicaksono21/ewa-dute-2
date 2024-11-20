@@ -321,30 +321,30 @@ class ChatInterface:
                     st.rerun()
 
     def render_messages(self):
-    """Render chat messages"""
-    for msg in st.session_state.messages:
-        if msg["role"] != "system":
-            style_class = "assistant-message" if msg["role"] == "assistant" else "user-message"
-            timestamp = msg.get("timestamp", "")
-            
-            # Clean up the content - remove extra newlines
-            content = msg["content"].strip()
-            content = content.replace("\n\n\n", "\n")  # Remove triple newlines
-            content = content.replace("\n\n", "\n")    # Convert double to single newlines
-            
-            # Convert markdown
-            content = content.replace("**", "<strong>", 1)
-            content = content.replace("**", "</strong>", 1)
-            while "**" in content:
+        """Render chat messages"""
+        for msg in st.session_state.messages:
+            if msg["role"] != "system":
+                style_class = "assistant-message" if msg["role"] == "assistant" else "user-message"
+                timestamp = msg.get("timestamp", "")
+                
+                # Clean up the content - remove extra newlines
+                content = msg["content"].strip()
+                content = content.replace("\n\n\n", "\n")  # Remove triple newlines
+                content = content.replace("\n\n", "\n")    # Convert double to single newlines
+                
+                # Convert markdown
                 content = content.replace("**", "<strong>", 1)
                 content = content.replace("**", "</strong>", 1)
-            
-            st.markdown(f"""
-                <div class="chat-message {style_class}">
-                    <div class="message-content">{content}</div>
-                    <div class="message-timestamp">{timestamp}</div>
-                </div>
-            """, unsafe_allow_html=True)
+                while "**" in content:
+                    content = content.replace("**", "<strong>", 1)
+                    content = content.replace("**", "</strong>", 1)
+                
+                st.markdown(f"""
+                    <div class="chat-message {style_class}">
+                        <div class="message-content">{content}</div>
+                        <div class="message-timestamp">{timestamp}</div>
+                    </div>
+                """, unsafe_allow_html=True)
 
     def handle_chat_input(self):
         """Handle chat input and responses"""
