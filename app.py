@@ -1,6 +1,7 @@
 import streamlit as st
 import firebase_admin
 from firebase_admin import credentials, auth, firestore
+from google.cloud.firestore import FieldFilter
 from openai import OpenAI
 from datetime import datetime, timedelta
 import pytz
@@ -119,22 +120,22 @@ class ChatInterface:
             st.session_state.last_activity = datetime.now()
 
     def create_new_conversation(self, user_id: str) -> str:
-       """Create a new conversation in Firestore"""
-       try:
-           conversation_ref = db.collection('conversations').document()
-           current_time = datetime.now(self.london_tz)
-           conversation_data = {
-               'user_id': user_id,
-               'created_at': current_time,
-               'updated_at': current_time,
-               'title': f"Essay {current_time.strftime('%Y-%m-%d %H:%M')}",
-               'status': 'active'
-           }
-           conversation_ref.set(conversation_data)
-           return conversation_ref.id
-       except Exception as e:
-           st.error(f"Error creating new conversation: {str(e)}")
-           return None
+        """Create a new conversation in Firestore"""
+        try:
+            conversation_ref = db.collection('conversations').document()
+            current_time = datetime.now(self.london_tz)
+            conversation_data = {
+                'user_id': user_id,
+                'created_at': current_time,
+                'updated_at': current_time,
+                'title': f"Essay {current_time.strftime('%Y-%m-%d %H:%M')}",
+                'status': 'active'
+            }
+            conversation_ref.set(conversation_data)
+            return conversation_ref.id
+        except Exception as e:
+            st.error(f"Error creating new conversation: {str(e)}")
+            return None
 
     def load_conversation(self, conversation_id: str):
         """Load a specific conversation from Firestore"""
@@ -145,11 +146,10 @@ class ChatInterface:
                        .order_by('timestamp')
                        .stream())
             
-            # Convert Firestore timestamps to strings when loading messages
+            # Convert Firestore timestamps to strings
             formatted_messages = []
             for msg in messages:
                 msg_dict = msg.to_dict()
-                # Handle timestamp
                 if 'timestamp' in msg_dict and hasattr(msg_dict['timestamp'], 'strftime'):
                     msg_dict['timestamp'] = msg_dict['timestamp'].strftime("%Y-%m-%d %H:%M")
                 formatted_messages.append(msg_dict)
@@ -159,45 +159,41 @@ class ChatInterface:
         except Exception as e:
             st.error(f"Error loading conversation: {str(e)}")
 
-
     def save_message(self, message: dict):
-        """Save a message to the current conversation"""
+        """Save message to Firestore"""
         try:
             if not st.session_state.current_conversation_id:
                 st.session_state.current_conversation_id = self.create_new_conversation(
                     st.session_state.user.uid
                 )
 
-            # Message already contains datetime timestamp from the handle_chat_input method
-            
-            # Save to Firestore
+            # Save to Firestore (message already contains datetime timestamp)
             db.collection('conversations').document(st.session_state.current_conversation_id)\
-              .collection('messages').add(message)
+                .collection('messages').add(message)
             
             # Update conversation metadata
             db.collection('conversations').document(st.session_state.current_conversation_id)\
-              .update({
-                  'updated_at': message['timestamp'],
-                  'last_message': message['content'][:100]
-              })
+                .update({
+                    'updated_at': message['timestamp'],
+                    'last_message': message['content'][:100]
+                })
         except Exception as e:
             st.error(f"Error saving message: {str(e)}")
-
 
     def get_user_conversations(self, user_id: str, limit: int = 10):
         """Get recent conversations for the user"""
         try:
-            # Most modern query syntax using filter keyword argument
             conversations = (db.collection('conversations')
-                            .where(filter=firestore.FieldFilter("user_id", "==", user_id))
+                            .where(filter=FieldFilter("user_id", "==", user_id))
                             .order_by('updated_at', direction=firestore.Query.DESCENDING)
                             .limit(limit)
                             .stream())
             
-            # Rest of the function remains the same
+            # Convert Firestore timestamps when returning
             formatted_conversations = []
             for conv in conversations:
                 conv_dict = conv.to_dict()
+                # Handle timestamps
                 if 'created_at' in conv_dict and hasattr(conv_dict['created_at'], 'strftime'):
                     conv_dict['created_at'] = conv_dict['created_at'].strftime("%Y-%m-%d %H:%M")
                 if 'updated_at' in conv_dict and hasattr(conv_dict['updated_at'], 'strftime'):
@@ -218,7 +214,7 @@ class ChatInterface:
             if st.button("+ New Essay", key="new_chat"):
                 st.session_state.messages = []
                 st.session_state.current_conversation_id = None
-                st.experimental_rerun()
+                st.rerun()
             
             st.markdown("---")
             
@@ -238,7 +234,7 @@ class ChatInterface:
                     help="Click to load this conversation"
                 ):
                     self.load_conversation(conv['id'])
-                    st.experimental_rerun()
+                    st.rerun()
 
     def render_messages(self):
         """Render chat messages"""
@@ -247,7 +243,7 @@ class ChatInterface:
                 # Determine message style based on role
                 style_class = "assistant-message" if msg["role"] == "assistant" else "user-message"
                 
-                # Timestamp should already be a string from our handling above
+                # Timestamp should already be a string
                 timestamp = msg.get("timestamp", "No time")
                 
                 # Render message with metadata
@@ -262,22 +258,22 @@ class ChatInterface:
         """Handle chat input and responses"""
         if prompt := st.chat_input("Type your message here..."):
             try:
-                # Create user message with formatted timestamp
+                # Create user message with string timestamp
                 current_time = datetime.now(self.london_tz)
                 user_message = {
                     "role": "user",
                     "content": prompt,
-                    "timestamp": current_time.strftime("%Y-%m-%d %H:%M")  # Store as string
+                    "timestamp": current_time.strftime("%Y-%m-%d %H:%M")
                 }
                 
                 # Add to session state
                 st.session_state.messages.append(user_message)
                 
-                # Save to Firestore (timestamps are handled differently for Firestore)
+                # For Firestore, use datetime
                 firestore_user_message = {
                     "role": "user",
                     "content": prompt,
-                    "timestamp": current_time  # Keep as datetime for Firestore
+                    "timestamp": current_time
                 }
                 self.save_message(firestore_user_message)
                 
@@ -356,25 +352,25 @@ Additional Guidelines:
                         frequency_penalty=0.5
                     )
                     
-                   # Create assistant message with formatted timestamp
+                    # Create assistant message with string timestamp
                     assistant_message = {
                         "role": "assistant",
                         "content": response.choices[0].message.content,
-                        "timestamp": datetime.now(self.london_tz).strftime("%Y-%m-%d %H:%M")  # Store as string
+                        "timestamp": datetime.now(self.london_tz).strftime("%Y-%m-%d %H:%M")
                     }
                     
                     # Add to session state
                     st.session_state.messages.append(assistant_message)
                     
-                    # Save to Firestore
+                    # For Firestore, use datetime
                     firestore_assistant_message = {
                         "role": "assistant",
                         "content": response.choices[0].message.content,
-                        "timestamp": datetime.now(self.london_tz)  # Keep as datetime for Firestore
+                        "timestamp": datetime.now(self.london_tz)
                     }
                     self.save_message(firestore_assistant_message)
                     
-                st.experimental_rerun()
+                st.rerun()
             except Exception as e:
                 st.error(f"Error in chat handling: {str(e)}")
 
@@ -395,7 +391,7 @@ def login_page():
             st.session_state.user = user
             st.session_state.logged_in = True
             st.session_state.last_activity = datetime.now()
-            st.experimental_rerun()
+            st.rerun()
         except Exception as e:
             st.error("Login failed. Please check your credentials.")
 
@@ -415,7 +411,7 @@ def main():
     # Check session timeout
     if check_session_timeout():
         st.warning("Session expired. Please login again.")
-        st.experimental_rerun()
+        st.rerun()
     
     # Update last activity
     st.session_state.last_activity = datetime.now()
