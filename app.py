@@ -210,51 +210,41 @@ class ChatInterface:
             st.error(f"Error getting conversations: {str(e)}")
             return []
 
-    def render_sidebar(self):
-    	"""Render the sidebar with conversation history"""
-   	with st.sidebar:
-        	st.markdown('<h2 style="color: white;">Essay Writing Assistant</h2>', unsafe_allow_html=True)
-        
-        	if st.button("+ New Essay", key="new_chat", use_container_width=True):
-            	   st.session_state.messages = []
-                   st.session_state.current_conversation_id = None
-                   st.rerun()
-        
-       		 st.markdown("<hr style='margin: 1rem 0; opacity: 0.2;'>", unsafe_allow_html=True)
-        
-        	conversations = self.get_user_conversations(st.session_state.user.uid)
-       		for conv in conversations:
-           	     button_key = f"conv_{conv['id']}"
-           	     preview_text = conv.get('title', 'Untitled Essay')
-           	     timestamp = conv.get('updated_at', '')
+     def render_sidebar(self):
+        """Render the sidebar with conversation history"""
+        with st.sidebar:
+            st.markdown('<h2 style="color: white;">Essay Writing Assistant</h2>', unsafe_allow_html=True)
             
-           	 # Add timestamp in smaller text below the title
-            	st.markdown(f"""
-                	<div style='margin-bottom: 0.5rem;'>
-                  	     <button class='stButton' style='width: 100%; text-align: left;' key='{button_key}'>
-                        	 <div style='color: white;'>{preview_text}</div>
-                        	 <div style='color: rgba(255,255,255,0.5); font-size: 0.8rem;'>{timestamp}</div>
-                    	     </button>
-                         </div>
-            	""", unsafe_allow_html=True)
+            if st.button("+ New Essay", key="new_chat", use_container_width=True):
+                st.session_state.messages = []
+                st.session_state.current_conversation_id = None
+                st.rerun()
             
-            	if st.button(f"hidden_{preview_text}", key=button_key, help="Click to load this conversation"):
-                	self.load_conversation(conv['id'])
-                	st.rerun()
+            st.markdown("<hr style='margin: 1rem 0; opacity: 0.2;'>", unsafe_allow_html=True)
+            
+            conversations = self.get_user_conversations(st.session_state.user.uid)
+            for conv in conversations:
+                if st.button(
+                    conv.get('title', 'Untitled Essay'),
+                    key=f"conv_{conv['id']}",
+                    use_container_width=True
+                ):
+                    self.load_conversation(conv['id'])
+                    st.rerun()
 
     def render_messages(self):
-    """Render chat messages"""
-    for msg in st.session_state.messages:
-        if msg["role"] != "system":
-            style_class = "assistant-message" if msg["role"] == "assistant" else "user-message"
-            timestamp = msg.get("timestamp", "")
-            
-            st.markdown(f"""
-                <div class="chat-message {style_class}">
-                    <div class="message-content">{msg["content"]}</div>
-                    <div class="message-timestamp">{timestamp}</div>
-                </div>
-            """, unsafe_allow_html=True)
+        """Render chat messages"""
+        for msg in st.session_state.messages:
+            if msg["role"] != "system":
+                style_class = "assistant-message" if msg["role"] == "assistant" else "user-message"
+                timestamp = msg.get("timestamp", "")
+                
+                st.markdown(f"""
+                    <div class="chat-message {style_class}">
+                        <div class="message-content">{msg["content"]}</div>
+                        <div class="message-timestamp">{timestamp}</div>
+                    </div>
+                """, unsafe_allow_html=True)
 
     def handle_chat_input(self):
         """Handle chat input and responses"""
@@ -282,7 +272,7 @@ class ChatInterface:
                 # Get AI response with loading spinner
                 with st.spinner('Getting response...'):
                     response = OpenAI(api_key=st.secrets["default"]["OPENAI_API_KEY"]).chat.completions.create(
-                        model="gpt-4-0125-preview",
+                        model="gpt-4o-mini",
                         messages=[
                             {"role": "system", "content": """Role: Essay Writing Assistant (300-500 words)
 Response Length: Keep answers brief and to the point. Max. 75 words per response.
