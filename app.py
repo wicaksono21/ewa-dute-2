@@ -210,7 +210,7 @@ class ChatInterface:
             st.error(f"Error getting conversations: {str(e)}")
             return []
 
-     def render_sidebar(self):
+    def render_sidebar(self):
         """Render the sidebar with conversation history"""
         with st.sidebar:
             st.markdown('<h2 style="color: white;">Essay Writing Assistant</h2>', unsafe_allow_html=True)
@@ -244,7 +244,7 @@ class ChatInterface:
                         <div class="message-content">{msg["content"]}</div>
                         <div class="message-timestamp">{timestamp}</div>
                     </div>
-                """, unsafe_allow_html=True)
+                """, unsafe_allow_html=True) 
 
     def handle_chat_input(self):
         """Handle chat input and responses"""
