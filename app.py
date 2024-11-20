@@ -97,7 +97,46 @@ st.markdown("""
         /* Hide Streamlit branding */
         #MainMenu {visibility: hidden;}
         footer {visibility: hidden;}
+
+	/* Message content styling */
+        .message-content {
+            color: white !important;
+            white-space: pre-wrap;
+            line-height: 1.5;
+        }
         
+        /* Make markdown bold text more visible */
+        .message-content strong {
+            color: white !important;
+            font-weight: 600;
+        }
+        
+        /* Numbered list styling */
+        .message-content ol {
+            margin: 1rem 0;
+            padding-left: 1.5rem;
+        }
+        
+        .message-content ol li {
+            margin: 0.5rem 0;
+        }
+        
+        /* Chat message container */
+        .chat-message {
+            padding: 1.5rem;
+            margin: 1rem 0;
+            border-radius: 0.5rem;
+            color: white !important;
+            background-color: #444654;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        /* Message timestamp */
+        .message-timestamp {
+            color: rgba(255, 255, 255, 0.5) !important;
+            font-size: 0.8rem;
+            margin-top: 0.8rem;
+        }
     </style>
 """, unsafe_allow_html=True)
 
@@ -109,16 +148,18 @@ if not firebase_admin._apps:
 # Initialize Firestore
 db = firestore.client()
 
-# Define initial assistant message
+# Define initial assistant message with proper formatting
 INITIAL_ASSISTANT_MESSAGE = {
     "role": "assistant",
-    "content": "Hi there! Ready to start your essay? I'm here to guide and help you improve your argumentative essay writing skills with activities like:\n"
-              "1. **Topic Selection**\n"
-              "2. **Outlining**\n"
-              "3. **Drafting**\n"
-              "4. **Reviewing**\n"
-              "5. **Proofreading**\n\n"
-              "What topic are you interested in writing about? If you'd like suggestions, just let me know!"
+    "content": """Hi there! Ready to start your essay? I'm here to guide and help you improve your argumentative essay writing skills with activities like:
+
+1. **Topic Selection**
+2. **Outlining**
+3. **Drafting**
+4. **Reviewing**
+5. **Proofreading**
+
+What topic are you interested in writing about? If you'd like suggestions, just let me know!"""
 }
 
 class ChatInterface:
@@ -256,7 +297,6 @@ class ChatInterface:
                     self.load_conversation(conv['id'])
                     st.rerun()
 
-
     def render_messages(self):
         """Render chat messages"""
         for msg in st.session_state.messages:
@@ -264,12 +304,19 @@ class ChatInterface:
                 style_class = "assistant-message" if msg["role"] == "assistant" else "user-message"
                 timestamp = msg.get("timestamp", "")
                 
+                # Convert markdown content
+                content = msg["content"].replace("**", "<strong>", 1)
+                content = content.replace("**", "</strong>", 1)
+                while "**" in content:
+                    content = content.replace("**", "<strong>", 1)
+                    content = content.replace("**", "</strong>", 1)
+                
                 st.markdown(f"""
                     <div class="chat-message {style_class}">
-                        <div class="message-content">{msg["content"]}</div>
+                        <div class="message-content">{content}</div>
                         <div class="message-timestamp">{timestamp}</div>
                     </div>
-                """, unsafe_allow_html=True) 
+                """, unsafe_allow_html=True)
 
     def handle_chat_input(self):
         """Handle chat input and responses"""
