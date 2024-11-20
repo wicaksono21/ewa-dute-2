@@ -341,9 +341,9 @@ class ChatInterface:
             
           	st.markdown(f"""
                	    <div class="chat-message {style_class}">
-                    	<div class="message-content">{content}</div>
-                    	<div class="message-timestamp">{timestamp}</div>
-                     </div>
+                    	 <div class="message-content">{content}</div>
+                    	 <div class="message-timestamp">{timestamp}</div>
+                    </div>
              	""", unsafe_allow_html=True)
 
     def handle_chat_input(self):
