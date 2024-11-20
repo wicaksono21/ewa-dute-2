@@ -119,22 +119,22 @@ class ChatInterface:
             st.session_state.last_activity = datetime.now()
 
     def create_new_conversation(self, user_id: str) -> str:
-        """Create a new conversation in Firestore"""
-        try:
-            conversation_ref = db.collection('conversations').document()
-            current_time = datetime.now(self.london_tz)
-            conversation_data = {
-                'user_id': user_id,
-                'created_at': current_time,
-                'updated_at': current_time,
-                'title': f"Essay {current_time.strftime('%Y-%m-%d %H:%M')}",
-                'status': 'active'
-            }
-            conversation_ref.set(conversation_data)
-            return conversation_ref.id
-        except Exception as e:
-            st.error(f"Error creating new conversation: {str(e)}")
-            return None
+       """Create a new conversation in Firestore"""
+       try:
+           conversation_ref = db.collection('conversations').document()
+           current_time = datetime.now(self.london_tz)
+           conversation_data = {
+               'user_id': user_id,
+               'created_at': current_time,
+               'updated_at': current_time,
+               'title': f"Essay {current_time.strftime('%Y-%m-%d %H:%M')}",
+               'status': 'active'
+           }
+           conversation_ref.set(conversation_data)
+           return conversation_ref.id
+       except Exception as e:
+           st.error(f"Error creating new conversation: {str(e)}")
+           return None
 
   def load_conversation(self, conversation_id: str):
         """Load a specific conversation from Firestore"""
