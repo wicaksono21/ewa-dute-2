@@ -105,7 +105,7 @@ class ChatApp:
         
     def format_time(self, dt=None):
         dt = dt or datetime.now(self.tz)
-        return dt.strftime("[%Y-%m-%d %H:%M:%S]")
+        return dt.strftime("%Y-%m-%d %H:%M:%S")
     
     def get_conversations(self, user_id):
         return db.collection('conversations')\
