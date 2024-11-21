@@ -217,9 +217,10 @@ class ChatApp:
             st.title("Essay Writing Assistant")
             
             if st.button("+ New Essay", use_container_width=True):
-                st.session_state.messages = [
-                    {**INITIAL_ASSISTANT_MESSAGE, "timestamp": self.format_time()}
-                ]
+                if not st.session_state.get('messages', []):
+                    st.session_state.messages = [
+                        {**INITIAL_ASSISTANT_MESSAGE, "timestamp": self.format_time()}
+                    ]
                 st.session_state.current_conversation_id = None
                 st.rerun()
             
