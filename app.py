@@ -151,7 +151,7 @@ class ChatApp:
             "timestamp": firestore_time
         }
         
-        if message['role'] == 'user':
+       
             db.collection('conversations').document(conversation_id)\
               .collection('messages').add(message_for_db)
             
