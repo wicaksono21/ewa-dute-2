@@ -213,7 +213,7 @@ class ChatApp:
                         {**INITIAL_ASSISTANT_MESSAGE, "timestamp": self.format_time()}
                     ]
                 st.session_state.current_conversation_id = None
-                st.experimental_rerun()
+                st.rerun()
             
             st.divider()
             
