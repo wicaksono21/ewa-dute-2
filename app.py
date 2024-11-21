@@ -117,29 +117,33 @@ class ChatApp:
     def save_message(self, conversation_id, message):
         if not conversation_id:
             conversation_id = db.collection('conversations').document().id
-            db.collection('conversations').document(conversation_id).set({
-                'user_id': st.session_state.user.uid,
-                'created_at': datetime.now(self.tz),
-                'updated_at': datetime.now(self.tz),
-                'title': f"Essay {self.format_time()}"
-            })
-            st.session_state.current_conversation_id = conversation_id
+	    # Only create a new conversation entry for user messages
+	    if message['role'] == 'user':
+            	db.collection('conversations').document(conversation_id).set({
+                	'user_id': st.session_state.user.uid,
+                	'created_at': datetime.now(self.tz),
+                	'updated_at': datetime.now(self.tz),
+                	'title': f"Essay {self.format_time()}"
+            	})
+            	st.session_state.current_conversation_id = conversation_id
             
-            # Add initial message for new conversations
+            # Add initial message silently (without creating history entry)
             initial_msg = {
                 **INITIAL_ASSISTANT_MESSAGE,
                 "timestamp": datetime.now(self.tz)
             }
             db.collection('conversations').document(conversation_id)\
               .collection('messages').add(initial_msg)
-            
-        db.collection('conversations').document(conversation_id)\
-          .collection('messages').add(message)
+
+        # Only save to conversation history if it's a user message 
+	if message['role'] == 'user':    
+            db.collection('conversations').document(conversation_id)\
+              .collection('messages').add(message)
         
-        db.collection('conversations').document(conversation_id).update({
-            'updated_at': datetime.now(self.tz),
-            'last_message': message['content'][:100]
-        })
+            db.collection('conversations').document(conversation_id).update({
+                'updated_at': datetime.now(self.tz),
+                'last_message': message['content'][:100]
+            })
         
         return conversation_id
     
@@ -190,6 +194,7 @@ class ChatApp:
             st.title("Essay Writing Assistant")
             
             if st.button("+ New Essay", use_container_width=True):
+		# Don't create a conversation yet, just show initial message
                 st.session_state.messages = [
                     {**INITIAL_ASSISTANT_MESSAGE, "timestamp": self.format_time()}
                 ]
@@ -197,7 +202,8 @@ class ChatApp:
                 st.rerun()
             
             st.divider()
-            
+
+	    # Only show conversations that were started with user messages	
             for conv in self.get_conversations(st.session_state.user.uid):
                 conv_data = conv.to_dict()
                 if st.button(f"{conv_data.get('title', 'Untitled')}", key=conv.id):
