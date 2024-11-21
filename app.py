@@ -203,7 +203,7 @@ class ChatApp:
         with st.sidebar:
             st.title("Essay Writing Assistant")
             
-            if st.button("+ New Essay", use_container_width=True):
+            if st.button("+ New Session", use_container_width=True):
                 user = st.session_state.user  # Store user
                 st.session_state.clear()
                 st.session_state.user = user  # Restore user
