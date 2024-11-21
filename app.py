@@ -136,13 +136,21 @@ class ChatApp:
                         'title': f"Essay {self.format_time(current_time)}",
                         'status': 'active'
                     })
-                    st.session_state.current_conversation_id = conversation_id
+
+                    # Save the user message first
+                    new_conv_ref.collection('messages').add({
+                        **message,
+                        "timestamp": firestore_time
+                    })                                     
                     
                     # Add initial assistant message
                     new_conv_ref.collection('messages').add({
                         **INITIAL_ASSISTANT_MESSAGE,
                         "timestamp": firestore_time
                     })
+
+                    st.session_state.current_conversation_id = conversation_id
+            
 
             # Save the current message
             if conversation_id:
