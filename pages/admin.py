@@ -73,14 +73,16 @@ class AdminDashboard:
                     conv_title = conv_data.get('title', 'Untitled')
                     
                     # Add expandable section for each conversation
-                    with st.expander(f"View Essay: {conv_title}"):
+                    with st.expander(f"View Essay: {conv_title}", expanded=True):
                         # Get messages for this conversation
                         messages = self.db.collection('conversations').document(conv.id)\
-                                  .collection('messages').order_by('timestamp').stream()
+                                  .collection('messages')\
+                                  .order_by('timestamp')\
+                                  .stream()
                         
                         # Convert messages to detailed format
                         detailed_data = []
-                        prev_timestamp = None
+                        prev_msg_time = None
                         
                         for msg in messages:
                             msg_data = msg.to_dict()
@@ -91,29 +93,60 @@ class AdminDashboard:
                                 time = timestamp.astimezone(self.tz).strftime('%H:%M:%S')
                                 
                                 # Calculate response time
-                                if prev_timestamp and msg_data.get('role') == 'assistant':
-                                    response_time = (timestamp - prev_timestamp).total_seconds()
+                                if prev_msg_time and msg_data.get('role') == 'assistant':
+                                    # Convert times to seconds since midnight
+                                    curr_seconds = int(time.split(':')[0]) * 3600 + \
+                                                 int(time.split(':')[1]) * 60 + \
+                                                 int(time.split(':')[2])
+                                    prev_seconds = int(prev_msg_time.split(':')[0]) * 3600 + \
+                                                 int(prev_msg_time.split(':')[1]) * 60 + \
+                                                 int(prev_msg_time.split(':')[2])
+                                    response_time = curr_seconds - prev_seconds
                                 else:
-                                    response_time = None
+                                    response_time = 'N/A'
                                     
-                                prev_timestamp = timestamp
+                                prev_msg_time = time
                             else:
                                 date = 'N/A'
                                 time = 'N/A'
-                                response_time = None
+                                response_time = 'N/A'
                                 
+                            content = msg_data.get('content', '')
+                            
                             detailed_data.append({
                                 'date': date,
                                 'time': time,
                                 'role': msg_data.get('role', 'N/A'),
-                                'content': msg_data.get('content', 'N/A'),
-                                'length': len(msg_data.get('content', '')) if msg_data.get('content') else 0,
-                                'response_time': f"{response_time:.1f}" if response_time else 'N/A'
+                                'content': content,
+                                'length': len(content),
+                                'response_time': response_time
                             })
                         
                         # Display detailed chat log
                         if detailed_data:
-                            st.dataframe(detailed_data)
+                            st.dataframe(
+                                detailed_data,
+                                column_config={
+                                    "date": "Date",
+                                    "time": "Time",
+                                    "role": "Role",
+                                    "content": "Content",
+                                    "length": "Length",
+                                    "response_time": "Response Time (s)"
+                                },
+                                hide_index=True
+                            )
+                            
+                            # Add download button for CSV
+                            import pandas as pd
+                            df = pd.DataFrame(detailed_data)
+                            csv = df.to_csv(index=False)
+                            st.download_button(
+                                label="Download Chat Log as CSV",
+                                data=csv,
+                                file_name=f"{conv_title}_chat_log.csv",
+                                mime="text/csv"
+                            )
                         else:
                             st.info("No messages found for this essay.")
 
