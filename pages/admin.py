@@ -1,128 +1,106 @@
-# admin.py
 import streamlit as st
-import firebase_admin
-from firebase_admin import credentials, auth, firestore
+from firebase_admin import firestore
 from datetime import datetime
 import pytz
 
-class AdminDashboard:
-    def __init__(self):
-        self.db = firestore.client()
-        self.tz = pytz.timezone("Europe/London")
+def admin_dashboard():
+    st.title("Admin Dashboard")
+    
+    # Initialize Firestore
+    db = firestore.client()
+    
+    # Get counts for metrics
+    users_count = len(list(db.collection('users').get()))
+    convs = list(db.collection('conversations').get())
+    convs_count = len(convs)
+    active_convs = len(list(db.collection('conversations').where('status', '==', 'active').get()))
+    
+    # Display metrics
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        st.metric("Total Users", users_count)
+    with col2:
+        st.metric("Total Conversations", convs_count)
+    with col3:
+        st.metric("Active Essays", active_convs)
+    
+    # User Management
+    st.subheader("User Management")
+    users_ref = db.collection('users').stream()
+    users = [{"id": doc.id, **doc.to_dict()} for doc in users_ref]
+    
+    # Create user table
+    st.table({
+        'Email': [user.get('email', 'N/A') for user in users],
+        'Role': [user.get('role', 'N/A') for user in users],
+        'Last Login': [user.get('last_login', 'N/A') for user in users]
+    })
+    
+    # Chat History with Detailed Format
+    st.subheader("Essay History")
+    selected_email = st.selectbox(
+        "Select user to view essay history",
+        options=[user.get('email') for user in users],
+        index=None,
+        placeholder="Choose a user..."
+    )
+    
+    if selected_email:
+        selected_user = next((user for user in users if user.get('email') == selected_email), None)
         
-    def check_admin_access(self, email):
-        try:
-            user_ref = self.db.collection('users').where('email', '==', email).limit(1).get()
-            if not user_ref:
-                return False
-            user_data = user_ref[0].to_dict()
-            return user_data.get('role') == 'admin'
-        except Exception as e:
-            st.error(f"Error checking admin access: {e}")
-            return False
+        if selected_user:
+            conversations = db.collection('conversations')\
+                            .where('user_id', '==', selected_user['id'])\
+                            .order_by('updated_at', direction=firestore.Query.DESCENDING)\
+                            .stream()
             
-    def render_dashboard(self):
-        st.title("Admin Dashboard")
-        
-        # Admin metrics overview
-        col1, col2, col3 = st.columns(3)
-        with col1:
-            total_users = len(list(self.db.collection('users').get()))
-            st.metric("Total Users", total_users)
-        with col2:
-            total_convs = len(list(self.db.collection('conversations').get()))
-            st.metric("Total Conversations", total_convs)
-        with col3:
-            active_convs = len(list(self.db.collection('conversations').where('status', '==', 'active').get()))
-            st.metric("Active Essays", active_convs)
-        
-        # User management
-        st.subheader("User Management")
-        users_ref = self.db.collection('users').stream()
-        users = [{"id": doc.id, **doc.to_dict()} for doc in users_ref]
-        
-        user_data = []
-        for user in users:
-            last_login = user.get('last_login')
-            if last_login:
-                last_login = last_login.astimezone(self.tz).strftime("%Y-%m-%d %H:%M:%S")
-            else:
-                last_login = 'N/A'
+            # For each conversation
+            for conv in conversations:
+                conv_data = conv.to_dict()
+                conv_title = conv_data.get('title', 'Untitled')
                 
-            user_data.append([
-                user.get('email', 'N/A'),
-                user.get('role', 'N/A'),
-                last_login,
-            ])
-        
-        st.dataframe({
-            'Email': [u[0] for u in user_data],
-            'Role': [u[1] for u in user_data],
-            'Last Login': [u[2] for u in user_data]
-        })
-        
-        # Chat history viewer
-        st.subheader("Essay History")
-        selected_email = st.selectbox(
-            "Select user to view essay history",
-            options=[user.get('email') for user in users],
-            index=None,
-            placeholder="Choose a user..."
-        )
-        
-        if selected_email:
-            selected_user = next((user for user in users if user.get('email') == selected_email), None)
-            
-            if selected_user:
-                conversations = self.db.collection('conversations')\
-                                .where('user_id', '==', selected_user['id'])\
-                                .order_by('updated_at', direction=firestore.Query.DESCENDING)\
-                                .stream()
-                
-                conv_data = []
-                for conv in conversations:
-                    data = conv.to_dict()
-                    created_at = data.get('created_at')
-                    if created_at:
-                        created_at = created_at.astimezone(self.tz).strftime("%Y-%m-%d %H:%M:%S")
+                # Add expandable section for each conversation
+                with st.expander(f"View Essay: {conv_title}"):
+                    # Get messages for this conversation
+                    messages = db.collection('conversations').document(conv.id)\
+                              .collection('messages').order_by('timestamp').stream()
                     
-                    # View conversation button
-                    if st.button(f"View Essay: {data.get('title', 'Untitled')}", key=conv.id):
-                        messages = self.db.collection('conversations').document(conv.id)\
-                                  .collection('messages').order_by('timestamp').stream()
-                        
-                        st.write("---")
-                        st.write(f"Essay Content - {data.get('title', 'Untitled')}")
-                        for msg in messages:
-                            msg_data = msg.to_dict()
-                            st.text(f"{msg_data.get('role')}: {msg_data.get('content')}")
+                    # Convert messages to detailed format
+                    detailed_data = []
+                    for msg in messages:
+                        msg_data = msg.to_dict()
+                        timestamp = msg_data.get('timestamp')
+                        if timestamp:
+                            date = timestamp.astimezone(pytz.UTC).strftime('%Y-%m-%d')
+                            time = timestamp.astimezone(pytz.UTC).strftime('%H:%M:%S')
+                        else:
+                            date = 'N/A'
+                            time = 'N/A'
+                            
+                        detailed_data.append({
+                            'date': date,
+                            'time': time,
+                            'role': msg_data.get('role', 'N/A'),
+                            'content': msg_data.get('content', 'N/A'),
+                            'length': len(msg_data.get('content', '')) if msg_data.get('content') else 0,
+                            'response_time': msg_data.get('response_time', 'N/A')
+                        })
                     
-                    conv_data.append({
-                        'Date': created_at,
-                        'Title': data.get('title', 'Untitled'),
-                        'Status': data.get('status', 'N/A'),
-                        'Last Message': data.get('last_message', 'N/A')[:100] + '...' if data.get('last_message') else 'N/A'
-                    })
-                
-                if conv_data:
-                    st.dataframe(conv_data)
-                else:
-                    st.info("No essays found for this user.")
+                    # Display detailed chat log
+                    if detailed_data:
+                        st.dataframe(detailed_data)
+                    else:
+                        st.info("No messages found for this essay.")
 
-def main():
+def init_admin_page():
     st.set_page_config(page_title="Essay Writing Assistant - Admin", layout="wide")
     
-    # Check if user is logged in and is admin
     if 'user' not in st.session_state:
         st.error("Please log in first")
         return
         
     admin = AdminDashboard()
-    if not admin.check_admin_access(st.session_state.user.email):
-        st.error("Access denied. Admin privileges required.")
-        return
-        
     admin.render_dashboard()
 
 if __name__ == "__main__":
-    main()
+    init_admin_page()
