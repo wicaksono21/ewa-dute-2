@@ -189,7 +189,7 @@ class ChatApp:
         })
         
         # Get AI response
-        with st.spinner('Thinking...'):
+        #with st.spinner('Thinking...'):
             response = OpenAI(api_key=st.secrets["default"]["OPENAI_API_KEY"]).chat.completions.create(
                 model="gpt-4o-mini",
                 messages=[
