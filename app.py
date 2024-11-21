@@ -190,29 +190,29 @@ class ChatApp:
         
         # Get AI response
         #with st.spinner('Thinking...'):
-            response = OpenAI(api_key=st.secrets["default"]["OPENAI_API_KEY"]).chat.completions.create(
-                model="gpt-4o-mini",
-                messages=[
-                    {"role": "system", "content": SYSTEM_INSTRUCTIONS},
-                    *st.session_state.messages
-                ],
-                temperature=0
-            )
-            
-            # Add and save assistant response
-            assistant_msg = {
-                "role": "assistant",
-                "content": response.choices[0].message.content,
-                "timestamp": self.format_time(current_time)
-            }
-            st.session_state.messages.append(assistant_msg)
-            self.save_message(conversation_id, {
-                "role": "assistant",
-                "content": response.choices[0].message.content,
-                "timestamp": current_time
-            })
-        
-        st.rerun()
+        response = OpenAI(api_key=st.secrets["default"]["OPENAI_API_KEY"]).chat.completions.create(
+    	    model="gpt-4o-mini",
+    	    messages=[
+        	{"role": "system", "content": SYSTEM_INSTRUCTIONS},
+        	*st.session_state.messages
+    	    ],
+    	    temperature=0
+ 	)
+
+	# Add and save assistant response
+	assistant_msg = {
+    	    "role": "assistant",
+    	    "content": response.choices[0].message.content,
+    	    "timestamp": self.format_time(current_time)
+	}
+	st.session_state.messages.append(assistant_msg)
+	self.save_message(conversation_id, {
+    	    "role": "assistant",
+    	    "content": response.choices[0].message.content,
+    	    "timestamp": current_time
+	})
+
+	st.rerun()
     
     def render_sidebar(self):
         with st.sidebar:
