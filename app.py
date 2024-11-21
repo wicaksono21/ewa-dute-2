@@ -136,13 +136,7 @@ class ChatApp:
                         'title': f"Essay {self.format_time(current_time)}",
                         'status': 'active'
                     })  
-                    st.session_state.current_conversation_id = conversation_id
-                   
-                    # Add initial assistant message first
-                    new_conv_ref.collection('messages').add({
-                        **INITIAL_ASSISTANT_MESSAGE,
-                        "timestamp": firestore_time
-                    })                             
+                    st.session_state.current_conversation_id = conversation_id                                                
            
             # Save message to exisiting conversation
             if conversation_id:
@@ -219,7 +213,7 @@ class ChatApp:
                         {**INITIAL_ASSISTANT_MESSAGE, "timestamp": self.format_time()}
                     ]
                 st.session_state.current_conversation_id = None
-                st.rerun()
+                st.experimental_rerun()
             
             st.divider()
             
