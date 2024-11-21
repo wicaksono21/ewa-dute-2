@@ -135,34 +135,31 @@ class ChatApp:
                         'updated_at': firestore_time,
                         'title': f"Essay {self.format_time(current_time)}",
                         'status': 'active'
-                    })
-
-                    # Save the user message first
-                    new_conv_ref.collection('messages').add({
-                        **message,
-                        "timestamp": firestore_time
-                    })                                     
-                    
-                    # Add initial assistant message
+                    })                                       
+                   
+                    # Add initial assistant message first
                     new_conv_ref.collection('messages').add({
                         **INITIAL_ASSISTANT_MESSAGE,
                         "timestamp": firestore_time
                     })
 
+                    # Then Save the user message
+                    new_conv_ref.collection('messages').add({
+                        **message,
+                        "timestamp": firestore_time
+                    })                
+
                     st.session_state.current_conversation_id = conversation_id
             
 
-            # Save the current message
+            # Save message to exisiting conversation
             if conversation_id:
                 conv_ref = db.collection('conversations').document(conversation_id)
-                
-                # Save message first
                 conv_ref.collection('messages').add({
                     **message,
                     "timestamp": firestore_time
-                })
+                })                               
                 
-                # Then update conversation metadata
                 conv_ref.set({
                     'updated_at': firestore_time,
                     'last_message': message['content'][:100]
