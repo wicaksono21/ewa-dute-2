@@ -2,6 +2,7 @@ import streamlit as st
 from firebase_admin import firestore, auth
 from datetime import datetime
 import pytz
+import pandas as pd
 
 class AdminDashboard:
     def __init__(self):
@@ -60,7 +61,7 @@ class AdminDashboard:
         st.title("Admin Dashboard")
         
         # Sync Users Button
-        if st.button("Sync Authentication Users"):
+        if st.button("Sync Authentication Users", key="sync_users_btn"):
             synced_count = self.sync_users()
             if synced_count > 0:
                 st.success(f"Successfully synced {synced_count} new users to Firestore")
@@ -104,7 +105,8 @@ class AdminDashboard:
             "Select user to view essay history",
             options=[user.get('email') for user in users],
             index=None,
-            placeholder="Choose a user..."
+            placeholder="Choose a user...",
+            key="user_select"
         )
         
         if selected_email:
@@ -186,18 +188,19 @@ class AdminDashboard:
                                         help="Time since previous message in seconds"
                                     )
                                 },
-                                hide_index=True
+                                hide_index=True,
+                                key=f"dataframe_{conv.id}"  # Added unique key for dataframe
                             )
                             
-                            # Add download button for CSV
-                            import pandas as pd
+                            # Add download button for CSV with unique key
                             df = pd.DataFrame(detailed_data)
                             csv = df.to_csv(index=False).encode('utf-8')
                             st.download_button(
                                 label="Download Chat Log as CSV",
                                 data=csv,
                                 file_name=f"{conv_title}_chat_log.csv",
-                                mime="text/csv"
+                                mime="text/csv",
+                                key=f"download_{conv.id}"  # Unique key for each download button
                             )
                         else:
                             st.info("No messages found for this essay.")
