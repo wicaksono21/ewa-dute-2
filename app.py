@@ -172,7 +172,7 @@ class ChatApp:
         
         # Save to Firestore
         conversation_id = st.session_state.get('current_conversation_id')
-        self.save_message(conversation_id, {
+        conversation_id = self.save_message(conversation_id, {
             "role": "user",
             "content": prompt,
             "timestamp": current_time
@@ -195,11 +195,7 @@ class ChatApp:
             "timestamp": self.format_time(current_time)
         }
         st.session_state.messages.append(assistant_msg)
-        self.save_message(conversation_id, {
-            "role": "assistant",
-            "content": response.choices[0].message.content,
-            "timestamp": current_time
-        })
+        self.save_message(conversation_id, assistant_msg)
 
         st.rerun()
     
@@ -208,11 +204,11 @@ class ChatApp:
             st.title("Essay Writing Assistant")
             
             if st.button("+ New Essay", use_container_width=True):
-                if not st.session_state.get('messages', []):
-                    st.session_state.messages = [
-                        {**INITIAL_ASSISTANT_MESSAGE, "timestamp": self.format_time()}
-                    ]
-                st.session_state.current_conversation_id = None
+                st.session_state.clear()
+                st.session_state.logged_in = True
+                st.session_state.messages = [
+                    {**INITIAL_ASSISTANT_MESSAGE, "timestamp": self.format_time()}
+                ]
                 st.rerun()
             
             st.divider()
