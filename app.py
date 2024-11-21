@@ -120,45 +120,52 @@ class ChatApp:
     def save_message(self, conversation_id, message):
         current_time = datetime.now(self.tz)
         firestore_time = firestore.SERVER_TIMESTAMP
-        
-        # Create new conversation if it doesn't exist
-        if not conversation_id:
-            # Generate new conversation ID
-            conversation_id = db.collection('conversations').document().id
-            if message['role'] == 'user':
-                # Create conversation document
-                db.collection('conversations').document(conversation_id).set({
-                    'user_id': st.session_state.user.uid,
-                    'created_at': firestore_time,
-                    'updated_at': firestore_time,
-                    'title': f"Essay {self.format_time(current_time)}",
-                    'status': 'active'  # Add status field
-                })
-                st.session_state.current_conversation_id = conversation_id
+
+        try:
+            # Create new conversation if it doesn't exist
+            if not conversation_id:
+                # Generate new conversation ID and create conversation document
+                new_conv_ref = db.collection('conversations').document()
+                conversation_id = new_conv_ref.id
                 
-                # Add initial assistant message
-                db.collection('conversations').document(conversation_id)\
-                  .collection('messages').add({
-                      **INITIAL_ASSISTANT_MESSAGE,
-                      "timestamp": firestore_time
-                  })
-        
-        # Save the current message
-        if conversation_id:  # Only proceed if we have a valid conversation ID
-            # Save message
-            db.collection('conversations').document(conversation_id)\
-              .collection('messages').add({
-                  **message,
-                  "timestamp": firestore_time
-              })
+                if message['role'] == 'user':
+                    # Create conversation document first
+                    new_conv_ref.set({
+                        'user_id': st.session_state.user.uid,
+                        'created_at': firestore_time,
+                        'updated_at': firestore_time,
+                        'title': f"Essay {self.format_time(current_time)}",
+                        'status': 'active'
+                    })
+                    st.session_state.current_conversation_id = conversation_id
+                    
+                    # Add initial assistant message
+                    new_conv_ref.collection('messages').add({
+                        **INITIAL_ASSISTANT_MESSAGE,
+                        "timestamp": firestore_time
+                    })
+
+            # Save the current message
+            if conversation_id:
+                conv_ref = db.collection('conversations').document(conversation_id)
+                
+                # Save message first
+                conv_ref.collection('messages').add({
+                    **message,
+                    "timestamp": firestore_time
+                })
+                
+                # Then update conversation metadata
+                conv_ref.set({
+                    'updated_at': firestore_time,
+                    'last_message': message['content'][:100]
+                }, merge=True)
             
-            # Update conversation metadata
-            db.collection('conversations').document(conversation_id).update({
-                'updated_at': firestore_time,
-                'last_message': message['content'][:100]
-            })
-        
-        return conversation_id
+            return conversation_id
+            
+        except Exception as e:
+            st.error(f"Error saving message: {str(e)}")
+            return conversation_id
     
     def handle_chat(self, prompt):
         if not prompt:
