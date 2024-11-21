@@ -104,6 +104,8 @@ class ChatApp:
         self.tz = pytz.timezone("Europe/London")
         
     def format_time(self, dt=None):
+	if isinstance(dt, (datetime, type(firestore.SERVER_TIMESTAMP))):
+            return dt.strftime("[%Y-%m-%d %H:%M:%S]")
         dt = dt or datetime.now(self.tz)
         return dt.strftime("%Y-%m-%d %H:%M:%S")
     
@@ -115,22 +117,38 @@ class ChatApp:
                  .stream()
     
     def save_message(self, conversation_id, message):
+	# Convert datetime to Firestore timestamp
+    	current_time = datetime.now(self.tz)
+    	firestore_time = firestore.SERVER_TIMESTAMP
+	    
         if not conversation_id:
             conversation_id = db.collection('conversations').document().id
 	    # Only create a new conversation entry for user messages
 	    if message['role'] == 'user':
             	db.collection('conversations').document(conversation_id).set({
                 	'user_id': st.session_state.user.uid,
-                	'created_at': datetime.now(self.tz),
-                	'updated_at': datetime.now(self.tz),
+                	'created_at': firestore_time,
+                	'updated_at': firestore_time,
                 	'title': f"Essay {self.format_time()}"
             	})
             	st.session_state.current_conversation_id = conversation_id
+
+	     # Use formatted timestamp for session state
+    	     message_for_session = {
+        	**message,
+       		 "timestamp": self.format_time(current_time)
+    	     }
+    
+    	     # Use Firestore timestamp for database
+    	     message_for_db = {
+        	**message,
+        	"timestamp": firestore_time
+    	     }
             
             # Add initial message silently (without creating history entry)
             initial_msg = {
                 **INITIAL_ASSISTANT_MESSAGE,
-                "timestamp": datetime.now(self.tz)
+                "timestamp": firestore_time
             }
             db.collection('conversations').document(conversation_id)\
               .collection('messages').add(initial_msg)
@@ -141,7 +159,7 @@ class ChatApp:
               .collection('messages').add(message)
         
             db.collection('conversations').document(conversation_id).update({
-                'updated_at': datetime.now(self.tz),
+                'updated_at': firestore_time,
                 'last_message': message['content'][:100]
             })
         
