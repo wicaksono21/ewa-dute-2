@@ -2,6 +2,7 @@ import streamlit as st
 from firebase_admin import firestore
 from datetime import datetime
 import pytz
+import pandas as pd
 
 class AdminDashboard:
     def __init__(self):
@@ -49,7 +50,7 @@ class AdminDashboard:
             'Last Login': [user.get('last_login', 'N/A') for user in users]
         })
         
-        # Chat History with Detailed Format
+        # Essay History with Detailed Format
         st.subheader("Essay History")
         selected_email = st.selectbox(
             "Select user to view essay history",
@@ -92,8 +93,8 @@ class AdminDashboard:
                                 date = timestamp.astimezone(self.tz).strftime('%Y-%m-%d')
                                 time = timestamp.astimezone(self.tz).strftime('%H:%M:%S')
                                 
-                                # Calculate response time
-                                if prev_msg_time and msg_data.get('role') == 'assistant':
+                                # Calculate response time for all messages
+                                if prev_msg_time:
                                     # Convert times to seconds since midnight
                                     curr_seconds = int(time.split(':')[0]) * 3600 + \
                                                  int(time.split(':')[1]) * 60 + \
@@ -112,13 +113,15 @@ class AdminDashboard:
                                 response_time = 'N/A'
                                 
                             content = msg_data.get('content', '')
+                            # Count words instead of characters
+                            word_count = len(content.split()) if content else 0
                             
                             detailed_data.append({
                                 'date': date,
                                 'time': time,
                                 'role': msg_data.get('role', 'N/A'),
                                 'content': content,
-                                'length': len(content),
+                                'length': word_count,  # Now counting words
                                 'response_time': response_time
                             })
                         
@@ -131,16 +134,21 @@ class AdminDashboard:
                                     "time": "Time",
                                     "role": "Role",
                                     "content": "Content",
-                                    "length": "Length",
-                                    "response_time": "Response Time (s)"
+                                    "length": st.column_config.NumberColumn(
+                                        "Length",
+                                        help="Number of words"
+                                    ),
+                                    "response_time": st.column_config.NumberColumn(
+                                        "Response Time (s)",
+                                        help="Time since previous message in seconds"
+                                    )
                                 },
                                 hide_index=True
                             )
                             
                             # Add download button for CSV
-                            import pandas as pd
                             df = pd.DataFrame(detailed_data)
-                            csv = df.to_csv(index=False)
+                            csv = df.to_csv(index=False).encode('utf-8')
                             st.download_button(
                                 label="Download Chat Log as CSV",
                                 data=csv,
@@ -151,7 +159,11 @@ class AdminDashboard:
                             st.info("No messages found for this essay.")
 
 def main():
-    st.set_page_config(page_title="Essay Writing Assistant - Admin", layout="wide")
+    st.set_page_config(
+        page_title="Essay Writing Assistant - Admin", 
+        layout="wide",
+        initial_sidebar_state="expanded"
+    )
     
     # Check if user is logged in and is admin
     if 'user' not in st.session_state:
