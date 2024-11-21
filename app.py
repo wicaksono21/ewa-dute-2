@@ -102,12 +102,12 @@ Additional Guidelines:
 class ChatApp:
     def __init__(self):
         self.tz = pytz.timezone("Europe/London")
-        
+    
     def format_time(self, dt=None):
-	if isinstance(dt, (datetime, type(firestore.SERVER_TIMESTAMP))):
+        if isinstance(dt, (datetime, type(firestore.SERVER_TIMESTAMP))):
             return dt.strftime("[%Y-%m-%d %H:%M:%S]")
         dt = dt or datetime.now(self.tz)
-        return dt.strftime("%Y-%m-%d %H:%M:%S")
+        return dt.strftime("[%Y-%m-%d %H:%M:%S]")
     
     def get_conversations(self, user_id):
         return db.collection('conversations')\
@@ -117,47 +117,44 @@ class ChatApp:
                  .stream()
     
     def save_message(self, conversation_id, message):
-	# Convert datetime to Firestore timestamp
-    	current_time = datetime.now(self.tz)
-    	firestore_time = firestore.SERVER_TIMESTAMP
-	    
+        current_time = datetime.now(self.tz)
+        firestore_time = firestore.SERVER_TIMESTAMP
+        
         if not conversation_id:
             conversation_id = db.collection('conversations').document().id
-	    # Only create a new conversation entry for user messages
-	    if message['role'] == 'user':
-            	db.collection('conversations').document(conversation_id).set({
-                	'user_id': st.session_state.user.uid,
-                	'created_at': firestore_time,
-                	'updated_at': firestore_time,
-                	'title': f"Essay {self.format_time()}"
-            	})
-            	st.session_state.current_conversation_id = conversation_id
-
-	     # Use formatted timestamp for session state
-    	     message_for_session = {
-        	**message,
-       		 "timestamp": self.format_time(current_time)
-    	     }
-    
-    	     # Use Firestore timestamp for database
-    	     message_for_db = {
-        	**message,
-        	"timestamp": firestore_time
-    	     }
-            
-            # Add initial message silently (without creating history entry)
-            initial_msg = {
-                **INITIAL_ASSISTANT_MESSAGE,
-                "timestamp": firestore_time
-            }
-            db.collection('conversations').document(conversation_id)\
-              .collection('messages').add(initial_msg)
-
-        # Only save to conversation history if it's a user message 
-	if message['role'] == 'user':    
-            db.collection('conversations').document(conversation_id)\
-              .collection('messages').add(message)
+            if message['role'] == 'user':
+                db.collection('conversations').document(conversation_id).set({
+                    'user_id': st.session_state.user.uid,
+                    'created_at': firestore_time,
+                    'updated_at': firestore_time,
+                    'title': f"Essay {self.format_time(current_time)}"
+                })
+                st.session_state.current_conversation_id = conversation_id
+                
+                # Add initial message
+                initial_msg = {
+                    **INITIAL_ASSISTANT_MESSAGE,
+                    "timestamp": firestore_time
+                }
+                db.collection('conversations').document(conversation_id)\
+                  .collection('messages').add(initial_msg)
         
+        # Use formatted timestamp for session state
+        message_for_session = {
+            **message,
+            "timestamp": self.format_time(current_time)
+        }
+        
+        # Use Firestore timestamp for database
+        message_for_db = {
+            **message,
+            "timestamp": firestore_time
+        }
+        
+        if message['role'] == 'user':
+            db.collection('conversations').document(conversation_id)\
+              .collection('messages').add(message_for_db)
+            
             db.collection('conversations').document(conversation_id).update({
                 'updated_at': firestore_time,
                 'last_message': message['content'][:100]
@@ -168,21 +165,22 @@ class ChatApp:
     def handle_chat(self, prompt):
         if not prompt:
             return
-            
+        
+        current_time = datetime.now(self.tz)
         # Add user message
-        current_time = self.format_time()
-        st.session_state.messages.append({
+        user_message = {
             "role": "user",
             "content": prompt,
-            "timestamp": current_time
-        })
+            "timestamp": self.format_time(current_time)
+        }
+        st.session_state.messages.append(user_message)
         
         # Save to Firestore
         conversation_id = st.session_state.get('current_conversation_id')
         self.save_message(conversation_id, {
             "role": "user",
             "content": prompt,
-            "timestamp": datetime.now(self.tz)
+            "timestamp": current_time
         })
         
         # Get AI response
@@ -200,10 +198,14 @@ class ChatApp:
             assistant_msg = {
                 "role": "assistant",
                 "content": response.choices[0].message.content,
-                "timestamp": self.format_time()
+                "timestamp": self.format_time(current_time)
             }
             st.session_state.messages.append(assistant_msg)
-            self.save_message(conversation_id, {**assistant_msg, "timestamp": datetime.now(self.tz)})
+            self.save_message(conversation_id, {
+                "role": "assistant",
+                "content": response.choices[0].message.content,
+                "timestamp": current_time
+            })
         
         st.rerun()
     
@@ -212,7 +214,6 @@ class ChatApp:
             st.title("Essay Writing Assistant")
             
             if st.button("+ New Essay", use_container_width=True):
-		# Don't create a conversation yet, just show initial message
                 st.session_state.messages = [
                     {**INITIAL_ASSISTANT_MESSAGE, "timestamp": self.format_time()}
                 ]
@@ -220,21 +221,25 @@ class ChatApp:
                 st.rerun()
             
             st.divider()
-
-	    # Only show conversations that were started with user messages	
+            
             for conv in self.get_conversations(st.session_state.user.uid):
                 conv_data = conv.to_dict()
                 if st.button(f"{conv_data.get('title', 'Untitled')}", key=conv.id):
                     messages = db.collection('conversations').document(conv.id)\
-                               .collection('messages').order_by('timestamp').stream()
-                    st.session_state.messages = [msg.to_dict() for msg in messages]
+                              .collection('messages').order_by('timestamp').stream()
+                    st.session_state.messages = []
+                    for msg in messages:
+                        msg_dict = msg.to_dict()
+                        if 'timestamp' in msg_dict:
+                            msg_dict['timestamp'] = self.format_time(msg_dict['timestamp'])
+                        st.session_state.messages.append(msg_dict)
                     st.session_state.current_conversation_id = conv.id
                     st.rerun()
     
     def render_messages(self):
         for msg in st.session_state.messages:
             if msg["role"] != "system":
-                st.chat_message(msg["role"]).write(f"[{self.format_time()}] {msg['content']}")
+                st.chat_message(msg["role"]).write(f"{msg.get('timestamp', '')} {msg['content']}")
     
     def login(self, email, password):
         try:
