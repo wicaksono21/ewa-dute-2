@@ -99,6 +99,7 @@ Additional Guidelines:
 	• Student Voice: Help the student preserve their unique style and voice, and avoid imposing your own suggestions on the writing.
 • Strengthening Arguments: Emphasize the importance of logical reasoning, credible evidence, and effectively refuting counterarguments throughout the writing process."""
 
+
 class ChatApp:
     def __init__(self):
         self.tz = pytz.timezone("Europe/London")
@@ -120,41 +121,44 @@ class ChatApp:
         current_time = datetime.now(self.tz)
         firestore_time = firestore.SERVER_TIMESTAMP
         
+        # Create new conversation if it doesn't exist
         if not conversation_id:
+            # Generate new conversation ID
             conversation_id = db.collection('conversations').document().id
             if message['role'] == 'user':
+                # Create conversation document
                 db.collection('conversations').document(conversation_id).set({
                     'user_id': st.session_state.user.uid,
                     'created_at': firestore_time,
                     'updated_at': firestore_time,
                     'title': f"Essay {self.format_time(current_time)}",
-		    'status': 'active'  #add status field
+                    'status': 'active'  # Add status field
                 })
                 st.session_state.current_conversation_id = conversation_id
                 
                 # Add initial assistant message
-            	db.collection('conversations').document(conversation_id)\
-               	  .collection('messages').add({
-                	**INITIAL_ASSISTANT_MESSAGE,
-                 	"timestamp": firestore_time
-              	})
+                db.collection('conversations').document(conversation_id)\
+                  .collection('messages').add({
+                      **INITIAL_ASSISTANT_MESSAGE,
+                      "timestamp": firestore_time
+                  })
         
         # Save the current message
-    	if conversation_id:  # Only proceed if we have a valid conversation ID
+        if conversation_id:  # Only proceed if we have a valid conversation ID
             # Save message
             db.collection('conversations').document(conversation_id)\
               .collection('messages').add({
                   **message,
-              	  "timestamp": firestore_time
+                  "timestamp": firestore_time
+              })
+            
+            # Update conversation metadata
+            db.collection('conversations').document(conversation_id).update({
+                'updated_at': firestore_time,
+                'last_message': message['content'][:100]
             })
         
-        # Update conversation metadata
-        db.collection('conversations').document(conversation_id).update({
-            'updated_at': firestore_time,
-            'last_message': message['content'][:100]
-        })
-    
-    return conversation_id
+        return conversation_id
     
     def handle_chat(self, prompt):
         if not prompt:
