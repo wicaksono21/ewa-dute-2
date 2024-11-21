@@ -132,12 +132,12 @@ class ChatApp:
                 })
                 st.session_state.current_conversation_id = conversation_id
                 
-                 # Add initial assistant message
-            	 db.collection('conversations').document(conversation_id)\
-               	   .collection('messages').add({
-                  	**INITIAL_ASSISTANT_MESSAGE,
-                  	"timestamp": firestore_time
-              	 })
+                # Add initial assistant message
+            	db.collection('conversations').document(conversation_id)\
+               	  .collection('messages').add({
+                	**INITIAL_ASSISTANT_MESSAGE,
+                 	"timestamp": firestore_time
+              	})
         
         # Save the current message
     	if conversation_id:  # Only proceed if we have a valid conversation ID
