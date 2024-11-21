@@ -1,14 +1,50 @@
 import streamlit as st
-from firebase_admin import firestore
+from firebase_admin import firestore, auth
 from datetime import datetime
 import pytz
-import pandas as pd
 
 class AdminDashboard:
     def __init__(self):
         self.db = firestore.client()
         self.tz = pytz.timezone("Europe/London")
-        
+    
+    def create_user_document(self, user):
+        """Create or update user document in Firestore"""
+        try:
+            user_data = {
+                'email': user.email,
+                'role': 'user',
+                'created_at': firestore.SERVER_TIMESTAMP,
+                'last_login': firestore.SERVER_TIMESTAMP
+            }
+            
+            self.db.collection('users').document(user.uid).set(user_data)
+            return True
+        except Exception as e:
+            st.error(f"Error creating user document: {e}")
+            return False
+            
+    def sync_users(self):
+        """Sync Authentication users with Firestore users collection"""
+        try:
+            # Get all users from Authentication
+            auth_users = auth.list_users().iterate_all()
+            synced_count = 0
+            
+            for auth_user in auth_users:
+                # Check if user document exists in Firestore
+                user_doc = self.db.collection('users').document(auth_user.uid).get()
+                
+                if not user_doc.exists:
+                    # Create user document if it doesn't exist
+                    self.create_user_document(auth_user)
+                    synced_count += 1
+            
+            return synced_count
+        except Exception as e:
+            st.error(f"Error syncing users: {e}")
+            return 0
+            
     def check_admin_access(self, email):
         try:
             user_ref = self.db.collection('users').where('email', '==', email).limit(1).get()
@@ -19,9 +55,17 @@ class AdminDashboard:
         except Exception as e:
             st.error(f"Error checking admin access: {e}")
             return False
-            
+    
     def render_dashboard(self):
         st.title("Admin Dashboard")
+        
+        # Sync Users Button
+        if st.button("Sync Authentication Users"):
+            synced_count = self.sync_users()
+            if synced_count > 0:
+                st.success(f"Successfully synced {synced_count} new users to Firestore")
+            else:
+                st.info("All users are already synced")
         
         # Get counts for metrics
         users_count = len(list(self.db.collection('users').get()))
@@ -47,10 +91,14 @@ class AdminDashboard:
         st.table({
             'Email': [user.get('email', 'N/A') for user in users],
             'Role': [user.get('role', 'N/A') for user in users],
-            'Last Login': [user.get('last_login', 'N/A') for user in users]
+            'Last Login': [
+                user.get('last_login').astimezone(self.tz).strftime("%Y-%m-%d %H:%M:%S") 
+                if user.get('last_login') else 'N/A' 
+                for user in users
+            ]
         })
         
-        # Essay History with Detailed Format
+        # Essay History
         st.subheader("Essay History")
         selected_email = st.selectbox(
             "Select user to view essay history",
@@ -75,13 +123,11 @@ class AdminDashboard:
                     
                     # Add expandable section for each conversation
                     with st.expander(f"View Essay: {conv_title}", expanded=True):
-                        # Get messages for this conversation
                         messages = self.db.collection('conversations').document(conv.id)\
                                   .collection('messages')\
                                   .order_by('timestamp')\
                                   .stream()
                         
-                        # Convert messages to detailed format
                         detailed_data = []
                         prev_msg_time = None
                         
@@ -95,7 +141,6 @@ class AdminDashboard:
                                 
                                 # Calculate response time for all messages
                                 if prev_msg_time:
-                                    # Convert times to seconds since midnight
                                     curr_seconds = int(time.split(':')[0]) * 3600 + \
                                                  int(time.split(':')[1]) * 60 + \
                                                  int(time.split(':')[2])
@@ -113,7 +158,6 @@ class AdminDashboard:
                                 response_time = 'N/A'
                                 
                             content = msg_data.get('content', '')
-                            # Count words instead of characters
                             word_count = len(content.split()) if content else 0
                             
                             detailed_data.append({
@@ -121,11 +165,10 @@ class AdminDashboard:
                                 'time': time,
                                 'role': msg_data.get('role', 'N/A'),
                                 'content': content,
-                                'length': word_count,  # Now counting words
+                                'length': word_count,
                                 'response_time': response_time
                             })
                         
-                        # Display detailed chat log
                         if detailed_data:
                             st.dataframe(
                                 detailed_data,
@@ -147,6 +190,7 @@ class AdminDashboard:
                             )
                             
                             # Add download button for CSV
+                            import pandas as pd
                             df = pd.DataFrame(detailed_data)
                             csv = df.to_csv(index=False).encode('utf-8')
                             st.download_button(
@@ -165,7 +209,6 @@ def main():
         initial_sidebar_state="expanded"
     )
     
-    # Check if user is logged in and is admin
     if 'user' not in st.session_state:
         st.error("Please log in first")
         return
