@@ -152,13 +152,13 @@ class ChatApp:
         }
         
        
-            db.collection('conversations').document(conversation_id)\
-              .collection('messages').add(message_for_db)
+        db.collection('conversations').document(conversation_id)\
+          .collection('messages').add(message_for_db)
             
-            db.collection('conversations').document(conversation_id).update({
-                'updated_at': firestore_time,
-                'last_message': message['content'][:100]
-            })
+        db.collection('conversations').document(conversation_id).update({
+           'updated_at': firestore_time,
+           'last_message': message['content'][:100]
+        })
         
         return conversation_id
     
