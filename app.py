@@ -102,6 +102,13 @@ Additional Guidelines:
 class ChatApp:
     def __init__(self):
         self.tz = pytz.timezone("Europe/London")
+
+    def generate_title(self, message_content):  # Add this new method
+        # Remove special characters and get first few words
+        words = ' '.join(message_content.split()[:4])  # Get first 4 words
+        if len(words) > 30:
+            words = words[:30] + '...'  # Truncate if too long
+        return words
     
     def format_time(self, dt=None):
         if isinstance(dt, (datetime, type(firestore.SERVER_TIMESTAMP))):
@@ -129,11 +136,12 @@ class ChatApp:
                 
                 if message['role'] == 'user':
                     # Create conversation document first
+                    title = self.generate_title(message['content'])  # Add this line
                     new_conv_ref.set({
                         'user_id': st.session_state.user.uid,
                         'created_at': firestore_time,
                         'updated_at': firestore_time,
-                        'title': f"Essay {self.format_time(current_time)}",
+                        'title': title or "New Essay",  # Modified this line
                         'status': 'active'
                     })  
                     st.session_state.current_conversation_id = conversation_id                                                
