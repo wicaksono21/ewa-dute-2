@@ -133,7 +133,7 @@ class EWA:
                 
                 if message['role'] == 'user':
                     # Create conversation document first
-                    title = self.generate_title(message['content'])  # Add this line
+                    title = self.generate_title(message['content'], current_time)  # Added current_time parameter here
                     new_conv_ref.set({
                         'user_id': st.session_state.user.uid,
                         'created_at': firestore_time,
