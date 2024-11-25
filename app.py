@@ -97,7 +97,7 @@ Additional Guidelines:
     • Active Participation: Always pause after questions or feedback, allowing students to revise independently.
     • Clarification: If the student's response is unclear, always ask for more details before proceeding.
     • Student Voice: Help the student preserve their unique style and voice, and avoid imposing your own suggestions on the writing.
-- Strengthening Arguments: Emphasize the importance of logical reasoning, credible evidence, and effectively refuting counterarguments throughout the writing process."""
+    • Strengthening Arguments: Emphasize the importance of logical reasoning, credible evidence, and effectively refuting counterarguments throughout the writing process."""
 
 class EWA:
     def __init__(self):
