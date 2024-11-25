@@ -115,7 +115,7 @@ class EWA:
     
     def get_conversations(self, user_id):
         return db.collection('conversations')\
-                 .where(filter={"field_path": "user_id", "op_string": "==", "value": user_id})\
+                 .where('user_id', '==', user_id)\
                  .order_by('updated_at', direction=firestore.Query.DESCENDING)\
                  .limit(10)\
                  .stream()
