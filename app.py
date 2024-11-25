@@ -195,7 +195,7 @@ class EWA:
                 *st.session_state.messages
             ],
             temperature=0,
-            max.tokens=200
+            max_tokens=200
         )
 
         # Add and save assistant response
