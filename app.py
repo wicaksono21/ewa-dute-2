@@ -194,7 +194,7 @@ class EWA:
                 {"role": "system", "content": SYSTEM_INSTRUCTIONS},
                 *st.session_state.messages
             ],
-            temperature=0
+            temperature=0,
             max.tokens=200
         )
 
