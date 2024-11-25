@@ -169,37 +169,37 @@ class EWA:
         current_time = datetime.now(self.tz)
         time_str = self.format_time(current_time)
 
-        # 1. IMMEDIATE USER MESSAGE DISPLAY
+        # IMMEDIATE USER MESSAGE DISPLAY
         st.chat_message("user").write(f"{time_str} {prompt}")
-                
+
+        # Create messages context including system instructions and conversation history
+        messages_context = [
+            {"role": "system", "content": SYSTEM_INSTRUCTIONS},
+            *(st.session_state.messages if 'messages' in st.session_state else []),
+            {"role": "user", "content": prompt}
+        ]
+    
+        # Add current message to context
+        #messages_context.append({"role": "user", "content": prompt})
                
-        # 2. Get AI response
+        # Get AI response
         response = OpenAI(api_key=st.secrets["default"]["OPENAI_API_KEY"]).chat.completions.create(
             model="gpt-4o-mini",
-            messages=[
-                {"role": "system", "content": SYSTEM_INSTRUCTIONS},
-                *st.session_state.messages
-            ],
+            messages=messages_context,
             temperature=0,
             max_tokens=200
         )
         
-        # 3. IMMEDIATE ASSISTANT RESPONSE DISPLAY
+        # 4. IMMEDIATE ASSISTANT RESPONSE DISPLAY
         assistant_content = response.choices[0].message.content
         st.chat_message("assistant").write(f"{time_str} {assistant_content}")
         
-        # 4. STATE MANAGEMENT
-        # Create message objects
-        user_message = {
-            "role": "user",
-            "content": prompt,
-            "timestamp": time_str
-        }
-        assistant_msg = {
-            "role": "assistant",
-            "content": assistant_content,
-            "timestamp": time_str
-        }
+        # 5. Update session state in background
+        if 'messages' not in st.session_state:
+            st.session_state.messages = []
+    
+        user_message = {"role": "user", "content": prompt, "timestamp": time_str}
+        assistant_msg = {"role": "assistant", "content": assistant_content, "timestamp": time_str}
 
         # Update session state
         st.session_state.messages.append(user_message)
@@ -256,9 +256,13 @@ class EWA:
                     st.rerun()
     
     def render_messages(self):
-        for msg in st.session_state.messages:
-            if msg["role"] != "system":
-                st.chat_message(msg["role"]).write(f"{msg.get('timestamp', '')} {msg['content']}")
+        """Only render existing messages from session state"""
+        if 'messages' in st.session_state:
+            for msg in st.session_state.messages:
+                if msg["role"] != "system":
+                    st.chat_message(msg["role"]).write(
+                        f"{msg.get('timestamp', '')} {msg['content']}"
+                    )
     
     def login(self, email, password):
         try:
