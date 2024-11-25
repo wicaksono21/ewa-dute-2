@@ -240,7 +240,7 @@ class EWA:
                     st.rerun()
     
     def render_messages(self):
-        for msg in st.session_state.messages[:-1]:  # Skip the most recent if it's pending
+        for msg in st.session_state.messages:
             if msg["role"] != "system":
                 st.chat_message(msg["role"]).write(f"{msg.get('timestamp', '')} {msg['content']}")
     
