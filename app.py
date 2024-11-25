@@ -198,6 +198,9 @@ class EWA:
             max_tokens=200
         )
 
+        # Get assistant response content
+        assistant_content = response.choices[0].message.content
+        
         # Add and save assistant response
         assistant_msg = {
             "role": "assistant",
@@ -205,9 +208,10 @@ class EWA:
             "timestamp": self.format_time(current_time)
         }
         st.session_state.messages.append(assistant_msg)
-        self.save_message(conversation_id, assistant_msg)
-
-        #st.rerun()
+        self.save_message(conversation_id, assistant_msg)           
+   
+        # Immediately display assistant response
+        st.chat_message("assistant").write(f"{assistant_msg['timestamp']} {assistant_msg['content']}")
     
     def render_sidebar(self):
         with st.sidebar:
