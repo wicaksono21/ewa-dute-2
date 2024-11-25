@@ -167,6 +167,10 @@ class EWA:
             return
         
         current_time = datetime.now(self.tz)
+
+        # Immediately display user message
+        st.chat_message("user").write(f"{self.format_time(current_time)} {prompt}")
+        
         # Add user message
         user_message = {
             "role": "user",
@@ -191,6 +195,7 @@ class EWA:
                 *st.session_state.messages
             ],
             temperature=0
+            max.tokens=200
         )
 
         # Add and save assistant response
@@ -202,7 +207,7 @@ class EWA:
         st.session_state.messages.append(assistant_msg)
         self.save_message(conversation_id, assistant_msg)
 
-        st.rerun()
+        #st.rerun()
     
     def render_sidebar(self):
         with st.sidebar:
@@ -235,7 +240,7 @@ class EWA:
                     st.rerun()
     
     def render_messages(self):
-        for msg in st.session_state.messages:
+        for msg in st.session_state.messages[:-1]:  # Skip the most recent if it's pending
             if msg["role"] != "system":
                 st.chat_message(msg["role"]).write(f"{msg.get('timestamp', '')} {msg['content']}")
     
