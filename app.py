@@ -167,27 +167,13 @@ class EWA:
             return
         
         current_time = datetime.now(self.tz)
+        time_str = self.format_time(current_time)
 
-        # Immediately display user message
-        st.chat_message("user").write(f"{self.format_time(current_time)} {prompt}")
-        
-        # Add user message
-        user_message = {
-            "role": "user",
-            "content": prompt,
-            "timestamp": self.format_time(current_time)
-        }
-        st.session_state.messages.append(user_message)
-        
-        # Save to Firestore
-        conversation_id = st.session_state.get('current_conversation_id')
-        conversation_id = self.save_message(conversation_id, {
-            "role": "user",
-            "content": prompt,
-            "timestamp": current_time
-        })
-        
-        # Get AI response
+        # 1. IMMEDIATE USER MESSAGE DISPLAY
+        st.chat_message("user").write(f"{time_str} {prompt}")
+                
+               
+        # 2. Get AI response
         response = OpenAI(api_key=st.secrets["default"]["OPENAI_API_KEY"]).chat.completions.create(
             model="gpt-4o-mini",
             messages=[
@@ -197,22 +183,48 @@ class EWA:
             temperature=0,
             max_tokens=200
         )
-
-        # Get assistant response content
-        assistant_content = response.choices[0].message.content
         
-        # Add and save assistant response
+        # 3. IMMEDIATE ASSISTANT RESPONSE DISPLAY
+        assistant_content = response.choices[0].message.content
+        st.chat_message("assistant").write(f"{time_str} {assistant_content}")
+        
+        # 4. STATE MANAGEMENT
+        # Create message objects
+        user_message = {
+            "role": "user",
+            "content": prompt,
+            "timestamp": time_str
+        }
         assistant_msg = {
             "role": "assistant",
-            "content": response.choices[0].message.content,
-            "timestamp": self.format_time(current_time)
+            "content": assistant_content,
+            "timestamp": time_str
         }
+
+        # Update session state
+        st.session_state.messages.append(user_message)
         st.session_state.messages.append(assistant_msg)
-        self.save_message(conversation_id, assistant_msg)           
-   
-        # Immediately display assistant response
-        st.chat_message("assistant").write(f"{assistant_msg['timestamp']} {assistant_msg['content']}")
-    
+               
+        # 5. DATABASE OPERATIONS (after display)
+        try:
+            # Get conversation ID if exists
+            conversation_id = st.session_state.get('current_conversation_id')
+        
+            # Save user message
+            conversation_id = self.save_message(
+                conversation_id,
+                {**user_message, "timestamp": current_time}  # Use actual timestamp for database
+            )
+
+            # Save assistant message
+            self.save_message(
+                conversation_id,
+                {**assistant_msg, "timestamp": current_time}  # Use actual timestamp for database
+            )
+        except Exception as e:
+            st.error(f"Error saving messages: {str(e)}")
+        # Continue even if save fails - messages are already displayed
+            
     def render_sidebar(self):
         with st.sidebar:
             st.title("Essay Writing Assistant")
