@@ -99,16 +99,13 @@ Additional Guidelines:
     • Student Voice: Help the student preserve their unique style and voice, and avoid imposing your own suggestions on the writing.
 - Strengthening Arguments: Emphasize the importance of logical reasoning, credible evidence, and effectively refuting counterarguments throughout the writing process."""
 
-class ChatApp:
+class EWA:
     def __init__(self):
         self.tz = pytz.timezone("Europe/London")
 
-    def generate_title(self, message_content):  # Add this new method
-        # Remove special characters and get first few words
-        words = ' '.join(message_content.split()[:4])  # Get first 4 words
-        if len(words) > 30:
-            words = words[:30] + '...'  # Truncate if too long
-        return words
+    def generate_title(self, message_content, current_time):  
+        title = current_time.strftime('%b %d, %Y • ') + ' '.join(message_content.split()[:4])
+        return title[:50] if len(title) > 50 else title
     
     def format_time(self, dt=None):
         if isinstance(dt, (datetime, type(firestore.SERVER_TIMESTAMP))):
@@ -141,7 +138,7 @@ class ChatApp:
                         'user_id': st.session_state.user.uid,
                         'created_at': firestore_time,
                         'updated_at': firestore_time,
-                        'title': title or "New Essay",  # Modified this line
+                        'title': title or f"{current_time.strftime('%b %d, %Y')} • New Essay",
                         'status': 'active'
                     })  
                     st.session_state.current_conversation_id = conversation_id                                                
@@ -257,7 +254,7 @@ class ChatApp:
             return False
 
 def main():
-    app = ChatApp()
+    app = EWA()
     
     # Login page
     if not st.session_state.get('logged_in', False):
