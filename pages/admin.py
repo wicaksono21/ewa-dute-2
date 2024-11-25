@@ -72,17 +72,15 @@ class AdminDashboard:
         users_count = len(list(self.db.collection('users').get()))
         convs = list(self.db.collection('conversations').get())
         convs_count = len(convs)
-        active_convs = len(list(self.db.collection('conversations').where('status', '==', 'active').get()))
+        
         
         # Display metrics
-        col1, col2, col3 = st.columns(3)
+        col1, col2 = st.columns(2)
         with col1:
             st.metric("Total Users", users_count)
         with col2:
             st.metric("Total Conversations", convs_count)
-        with col3:
-            st.metric("Active Essays", active_convs)
-        
+               
         # User Management
         st.subheader("User Management")
         users_ref = self.db.collection('users').stream()
