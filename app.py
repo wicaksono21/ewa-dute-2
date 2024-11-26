@@ -102,13 +102,14 @@ Additional Guidelines:
     • Student Voice: Help the student preserve their unique style and voice, and avoid imposing your own suggestions on the writing.
     • Strengthening Arguments: Emphasize the importance of logical reasoning, credible evidence, and effectively refuting counterarguments throughout the writing process."""
 
+# Define constants using cached functions
+INITIAL_ASSISTANT_MESSAGE = get_initial_message()
+SYSTEM_INSTRUCTIONS = get_system_instructions()
+
 class EWA:
     def __init__(self):
         self.tz = pytz.timezone("Europe/London")
-        # Use cached static messages
-        self.INITIAL_ASSISTANT_MESSAGE = get_initial_message()
-        self.SYSTEM_INSTRUCTIONS = get_system_instructions()
-
+       
     def generate_title(self, message_content, current_time):  
         title = current_time.strftime('%b %d, %Y • ') + ' '.join(message_content.split()[:4])
         return title[:50] if len(title) > 50 else title
@@ -180,7 +181,7 @@ class EWA:
 
         # Create messages context including system instructions and conversation history
         messages_context = [
-            {"role": "system", "content": self.SYSTEM_INSTRUCTIONS},
+            {"role": "system", "content": SYSTEM_INSTRUCTIONS},
             *(st.session_state.messages if 'messages' in st.session_state else []),
             {"role": "user", "content": prompt}
         ]
@@ -276,7 +277,7 @@ class EWA:
             st.session_state.user = user
             st.session_state.logged_in = True
             st.session_state.messages = [{
-                **self.INITIAL_ASSISTANT_MESSAGE,
+                **INITIAL_ASSISTANT_MESSAGE,
                 "timestamp": self.format_time()
             }]
             return True
