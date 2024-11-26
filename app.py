@@ -2,6 +2,7 @@ import streamlit as st
 import firebase_admin
 from firebase_admin import credentials, auth, firestore
 from openai import OpenAI
+from functools import lru_cache
 from datetime import datetime
 import pytz
 
@@ -107,18 +108,21 @@ class EWA:
         title = current_time.strftime('%b %d, %Y • ') + ' '.join(message_content.split()[:4])
         return title[:50] if len(title) > 50 else title
     
+    @lru_cache(maxsize=128)
     def format_time(self, dt=None):
+        """Cache time formatting to avoid repeated calculations"""
         if isinstance(dt, (datetime, type(firestore.SERVER_TIMESTAMP))):
             return dt.strftime("[%Y-%m-%d %H:%M:%S]")
         dt = dt or datetime.now(self.tz)
         return dt.strftime("[%Y-%m-%d %H:%M:%S]")
     
     def get_conversations(self, user_id):
-        return db.collection('conversations')\
+        @st.cache_data(ttl=300)  # Cache for 5 minutes
+        return list(db.collection('conversations')\
                  .where('user_id', '==', user_id)\
                  .order_by('updated_at', direction=firestore.Query.DESCENDING)\
                  .limit(10)\
-                 .stream()
+                 .stream())
     
     def save_message(self, conversation_id, message):
         current_time = datetime.now(self.tz)
