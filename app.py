@@ -21,9 +21,8 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-@st.cache_resource
-def get_initial_message():
-    return {
+# Initial assistant message
+INITIAL_ASSISTANT_MESSAGE = {
     "role": "assistant",
     "content": """Hi there! Ready to start your essay? I'm here to guide and help you improve your argumentative essay writing skills with activities like:
 
@@ -36,9 +35,7 @@ def get_initial_message():
 What topic are you interested in writing about? If you'd like suggestions, just let me know!"""
 }
 
-@st.cache_resource
-def get_system_instructions():
-    return """Role: Essay Writing Assistant (300-500 words)
+SYSTEM_INSTRUCTIONS = """Role: Essay Writing Assistant (300-500 words)
 Response Length: Keep answers brief and to the point. Max. 75 words per response.
 Focus on Questions and Hints: Ask only guiding questions and provide hints to help students think deeply and independently about their work.
 Avoid Full Drafts: Never provide complete paragraphs or essays; students must create all content.
@@ -102,14 +99,10 @@ Additional Guidelines:
     • Student Voice: Help the student preserve their unique style and voice, and avoid imposing your own suggestions on the writing.
     • Strengthening Arguments: Emphasize the importance of logical reasoning, credible evidence, and effectively refuting counterarguments throughout the writing process."""
 
-# Define constants using cached functions
-INITIAL_ASSISTANT_MESSAGE = get_initial_message()
-SYSTEM_INSTRUCTIONS = get_system_instructions()
-
 class EWA:
     def __init__(self):
         self.tz = pytz.timezone("Europe/London")
-       
+
     def generate_title(self, message_content, current_time):  
         title = current_time.strftime('%b %d, %Y • ') + ' '.join(message_content.split()[:4])
         return title[:50] if len(title) > 50 else title
