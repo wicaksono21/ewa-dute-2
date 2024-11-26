@@ -6,11 +6,13 @@ from functools import lru_cache
 from datetime import datetime
 import pytz
 
-# Initialize Firebase and Firestore
-if not firebase_admin._apps:
-    cred = credentials.Certificate(dict(st.secrets["FIREBASE"]))
-    firebase_admin.initialize_app(cred)
-db = firestore.client()
+@st.cache_resource
+def init_firebase():
+    """Initialize Firebase with caching"""
+    if not firebase_admin._apps:
+        cred = credentials.Certificate(dict(st.secrets["FIREBASE"]))
+        firebase_admin.initialize_app(cred)
+    return firestore.client()
 
 # Page setup
 st.set_page_config(page_title="Essay Writing Assistant", layout="wide")
