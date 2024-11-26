@@ -26,8 +26,8 @@ st.markdown("""
 def get_static_messages():
     return {
         "initial": {
-    "role": "assistant",
-    "content": """Hi there! Ready to start your essay? I'm here to guide and help you improve your argumentative essay writing skills with activities like:
+            "role": "assistant",
+            "content": """Hi there! Ready to start your essay? I'm here to guide and help you improve your argumentative essay writing skills with activities like:
 
 1. **Topic Selection**
 2. **Outlining**
@@ -36,8 +36,8 @@ def get_static_messages():
 5. **Proofreading**
 
 What topic are you interested in writing about? If you'd like suggestions, just let me know!"""
-           },
-        "system": """Role: Essay Writing Assistant (300-500 words)
+        },
+            "system": """Role: Essay Writing Assistant (300-500 words)
 Response Length: Keep answers brief and to the point. Max. 75 words per response.
 Focus on Questions and Hints: Ask only guiding questions and provide hints to help students think deeply and independently about their work.
 Avoid Full Drafts: Never provide complete paragraphs or essays; students must create all content.
@@ -100,10 +100,10 @@ Additional Guidelines:
     • Clarification: If the student's response is unclear, always ask for more details before proceeding.
     • Student Voice: Help the student preserve their unique style and voice, and avoid imposing your own suggestions on the writing.
     • Strengthening Arguments: Emphasize the importance of logical reasoning, credible evidence, and effectively refuting counterarguments throughout the writing process."""
-        
+    }
 # Single cached object instead of separate functions
 STATIC_MESSAGES = get_static_messages()
-    }
+    
 
 
 class EWA:
