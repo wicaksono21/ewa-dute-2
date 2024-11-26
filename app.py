@@ -1,5 +1,3 @@
-# Must be the first Streamlit command
-st.set_page_config(page_title="Essay Writing Assistant", layout="wide")
 import streamlit as st
 import firebase_admin
 from firebase_admin import credentials, auth, firestore
@@ -7,6 +5,9 @@ from openai import OpenAI
 from functools import lru_cache
 from datetime import datetime
 import pytz
+
+# Must be the first Streamlit command
+st.set_page_config(page_title="Essay Writing Assistant", layout="wide")
 
 # Style configurations
 st.markdown("""
