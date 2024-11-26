@@ -115,14 +115,18 @@ class EWA:
             return dt.strftime("[%Y-%m-%d %H:%M:%S]")
         dt = dt or datetime.now(self.tz)
         return dt.strftime("[%Y-%m-%d %H:%M:%S]")
-    
-    def get_conversations(self, user_id):
-        @st.cache_data(ttl=300)  # Cache for 5 minutes
-        return list(db.collection('conversations')\
-                 .where('user_id', '==', user_id)\
-                 .order_by('updated_at', direction=firestore.Query.DESCENDING)\
-                 .limit(10)\
-                 .stream())
+
+    @st.cache_data(ttl=300)  # Cache for 5 minutes
+    def get_conversations(self, user_id):        
+        conversation = (
+            db.collection('conversations')
+            .where('user_id', '==', user_id)\
+            .order_by('updated_at', direction=firestore.Query.DESCENDING)\
+            .limit(10)\
+            .stream()
+        )
+        # Convert to list to make it cacheable
+        return list(conversations)
     
     def save_message(self, conversation_id, message):
         current_time = datetime.now(self.tz)
@@ -234,6 +238,8 @@ class EWA:
             st.title("Essay Writing Assistant")
             
             if st.button("+ New Session", use_container_width=True):
+                # Clear cache when starting new session
+                st.cache_data.clear()
                 user = st.session_state.user  # Store user
                 st.session_state.clear()
                 st.session_state.user = user  # Restore user
@@ -245,19 +251,16 @@ class EWA:
             
             st.divider()
             
-            for conv in self.get_conversations(st.session_state.user.uid):
-                conv_data = conv.to_dict()
-                if st.button(f"{conv_data.get('title', 'Untitled')}", key=conv.id):
-                    messages = db.collection('conversations').document(conv.id)\
-                              .collection('messages').order_by('timestamp').stream()
-                    st.session_state.messages = []
-                    for msg in messages:
-                        msg_dict = msg.to_dict()
-                        if 'timestamp' in msg_dict:
-                            msg_dict['timestamp'] = self.format_time(msg_dict['timestamp'])
-                        st.session_state.messages.append(msg_dict)
-                    st.session_state.current_conversation_id = conv.id
-                    st.rerun()
+            # Use cached conversations
+            try:
+                conversations = self.get_conversations(st.session_state.user.uid)
+                for conv in conversations:
+                    conv_data = conv.to_dict()
+                    if st.button(f"{conv_data.get('title', 'Untitled')}", key=conv.id):
+                        st.session_state.current_conversation_id = conv.id
+                        st.rerun()
+            except Exception as e:
+                st.error(f"Error loading conversations: {str(e)}")
     
     def render_messages(self):
         """Only render existing messages from session state"""
