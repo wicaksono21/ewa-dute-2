@@ -21,8 +21,11 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# Initial assistant message
-INITIAL_ASSISTANT_MESSAGE = {
+# Keep only essential caching
+@st.cache_resource
+def get_static_messages():
+    return {
+        "initial": {
     "role": "assistant",
     "content": """Hi there! Ready to start your essay? I'm here to guide and help you improve your argumentative essay writing skills with activities like:
 
@@ -33,9 +36,8 @@ INITIAL_ASSISTANT_MESSAGE = {
 5. **Proofreading**
 
 What topic are you interested in writing about? If you'd like suggestions, just let me know!"""
-}
-
-SYSTEM_INSTRUCTIONS = """Role: Essay Writing Assistant (300-500 words)
+           },
+        "system": """Role: Essay Writing Assistant (300-500 words)
 Response Length: Keep answers brief and to the point. Max. 75 words per response.
 Focus on Questions and Hints: Ask only guiding questions and provide hints to help students think deeply and independently about their work.
 Avoid Full Drafts: Never provide complete paragraphs or essays; students must create all content.
@@ -98,6 +100,11 @@ Additional Guidelines:
     • Clarification: If the student's response is unclear, always ask for more details before proceeding.
     • Student Voice: Help the student preserve their unique style and voice, and avoid imposing your own suggestions on the writing.
     • Strengthening Arguments: Emphasize the importance of logical reasoning, credible evidence, and effectively refuting counterarguments throughout the writing process."""
+        
+# Single cached object instead of separate functions
+STATIC_MESSAGES = get_static_messages()
+    }
+
 
 class EWA:
     def __init__(self):
@@ -174,7 +181,7 @@ class EWA:
 
         # Create messages context including system instructions and conversation history
         messages_context = [
-            {"role": "system", "content": SYSTEM_INSTRUCTIONS},
+            {"role": "system", "content": STATIC_MESSAGES["system"]},
             *(st.session_state.messages if 'messages' in st.session_state else []),
             {"role": "user", "content": prompt}
         ]
@@ -235,7 +242,7 @@ class EWA:
                 st.session_state.user = user  # Restore user
                 st.session_state.logged_in = True
                 st.session_state.messages = [
-                    {**INITIAL_ASSISTANT_MESSAGE, "timestamp": self.format_time()}
+                    {**STATIC_MESSAGES["initial"], "timestamp": self.format_time()}
                 ]
                 st.rerun()
             
@@ -270,7 +277,7 @@ class EWA:
             st.session_state.user = user
             st.session_state.logged_in = True
             st.session_state.messages = [{
-                **INITIAL_ASSISTANT_MESSAGE,
+                **STATIC_MESSAGES["initial"],
                 "timestamp": self.format_time()
             }]
             return True
