@@ -117,7 +117,7 @@ class EWA:
         return dt.strftime("[%Y-%m-%d %H:%M:%S]")
 
     @st.cache_data(ttl=300)  # Cache for 5 minutes
-    def get_conversations(self, user_id):        
+    def get_conversations(_self, user_id):        
         conversation = (
             db.collection('conversations')
             .where('user_id', '==', user_id)\
