@@ -5,8 +5,6 @@ from openai import OpenAI
 from datetime import datetime
 import pytz
 
-st.write(f"Streamlit version: {st.__version__}")
-
 # Initialize Firebase and Firestore
 if not firebase_admin._apps:
     cred = credentials.Certificate(dict(st.secrets["FIREBASE"]))
