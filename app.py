@@ -1,3 +1,5 @@
+# Must be the first Streamlit command
+st.set_page_config(page_title="Essay Writing Assistant", layout="wide")
 import streamlit as st
 import firebase_admin
 from firebase_admin import credentials, auth, firestore
@@ -5,6 +7,15 @@ from openai import OpenAI
 from functools import lru_cache
 from datetime import datetime
 import pytz
+
+# Style configurations
+st.markdown("""
+    <style>
+        .main { max-width: 800px; margin: 0 auto; }
+        .chat-message { padding: 1rem; margin: 0.5rem 0; border-radius: 0.5rem; background-color: #444654; color: white !important; }
+        #MainMenu, footer { visibility: hidden; }
+    </style>
+""", unsafe_allow_html=True)
 
 # Initialize Firebase with caching
 @st.cache_resource
