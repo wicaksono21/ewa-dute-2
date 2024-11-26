@@ -2,23 +2,10 @@ import streamlit as st
 import firebase_admin
 from firebase_admin import credentials, auth, firestore
 from openai import OpenAI
-from functools import lru_cache
 from datetime import datetime
 import pytz
+from functools import lru_cache
 
-# Must be the first Streamlit command
-st.set_page_config(page_title="Essay Writing Assistant", layout="wide")
-
-# Style configurations
-st.markdown("""
-    <style>
-        .main { max-width: 800px; margin: 0 auto; }
-        .chat-message { padding: 1rem; margin: 0.5rem 0; border-radius: 0.5rem; background-color: #444654; color: white !important; }
-        #MainMenu, footer { visibility: hidden; }
-    </style>
-""", unsafe_allow_html=True)
-
-# Initialize Firebase with caching
 @st.cache_resource
 def init_firebase():
     """Initialize Firebase with caching"""
@@ -40,12 +27,10 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# Cache the initial messages
-@st.cache_data
-def get_initial_messages():
-    return {
-        "role": "assistant",
-        "content": """Hi there! Ready to start your essay? I'm here to guide and help you improve your argumentative essay writing skills with activities like:
+# Initial assistant message
+INITIAL_ASSISTANT_MESSAGE = {
+    "role": "assistant",
+    "content": """Hi there! Ready to start your essay? I'm here to guide and help you improve your argumentative essay writing skills with activities like:
 
 1. **Topic Selection**
 2. **Outlining**
@@ -54,14 +39,9 @@ def get_initial_messages():
 5. **Proofreading**
 
 What topic are you interested in writing about? If you'd like suggestions, just let me know!"""
-    }
+}
 
-INITIAL_ASSISTANT_MESSAGE = get_initial_messages()
-
-# Cache system instructions
-@st.cache_data
-def get_system_instructions():
-    return """Role: Essay Writing Assistant (300-500 words)
+SYSTEM_INSTRUCTIONS = """Role: Essay Writing Assistant (300-500 words)
 Response Length: Keep answers brief and to the point. Max. 75 words per response.
 Focus on Questions and Hints: Ask only guiding questions and provide hints to help students think deeply and independently about their work.
 Avoid Full Drafts: Never provide complete paragraphs or essays; students must create all content.
@@ -125,60 +105,39 @@ Additional Guidelines:
 	• Student Voice: Help the student preserve their unique style and voice, and avoid imposing your own suggestions on the writing.
 	• Strengthening Arguments: Emphasize the importance of logical reasoning, credible evidence, and effectively refuting counterarguments throughout the writing process."""  # Your full system instructions here
 
-SYSTEM_INSTRUCTIONS = get_system_instructions()
-
 class EWA:
     def __init__(self):
         self.tz = pytz.timezone("Europe/London")
         self.db = db  # Use the cached database instance
 
+    def generate_title(self, message_content, current_time):  
+        title = current_time.strftime('%b %d, %Y • ') + ' '.join(message_content.split()[:4])
+        return title[:50] if len(title) > 50 else title
+    
     @lru_cache(maxsize=128)
-    def format_time(self, dt_str=None):
-        """Cache time formatting to avoid repeated calculations"""
-        if dt_str:
-            dt = datetime.fromisoformat(dt_str)
-        else:
-            dt = datetime.now(self.tz)
+    def format_time(self, dt=None):
+        if isinstance(dt, (datetime, type(firestore.SERVER_TIMESTAMP))):
+            return dt.strftime("[%Y-%m-%d %H:%M:%S]")
+        dt = dt or datetime.now(self.tz)
         return dt.strftime("[%Y-%m-%d %H:%M:%S]")
-
+    
     @st.cache_data(ttl=300)  # Cache for 5 minutes
     def get_conversations(_self, user_id):
         """Get and cache user conversations"""
-        try:
-            conversations = (
-                _self.db.collection('conversations')
-                .where('user_id', '==', user_id)
-                .order_by('updated_at', direction=firestore.Query.DESCENDING)
-                .limit(10)
-                .stream()
-            )
-            return list(conversations)
-        except Exception as e:
-            st.error(f"Error fetching conversations: {str(e)}")
-            return []
-
-    @st.cache_data(ttl=300)
-    def get_conversation_messages(_self, conversation_id):
-        """Cache conversation messages"""
-        try:
-            messages = (
-                _self.db.collection('conversations')
-                .document(conversation_id)
-                .collection('messages')
-                .order_by('timestamp')
-                .stream()
-            )
-            return [msg.to_dict() for msg in messages]
-        except Exception as e:
-            st.error(f"Error fetching messages: {str(e)}")
-            return []
-
+        conversations = (
+            _self.db.collection('conversations')
+            .where('user_id', '==', user_id)
+            .order_by('updated_at', direction=firestore.Query.DESCENDING)
+            .limit(10)
+            .stream()
+        )
+        return list(conversations)
+    
     def save_message(self, conversation_id, message):
-        """Save message to database with error handling"""
-        try:
-            current_time = datetime.now(self.tz)
-            firestore_time = firestore.SERVER_TIMESTAMP
+        current_time = datetime.now(self.tz)
+        firestore_time = firestore.SERVER_TIMESTAMP
 
+        try:
             if not conversation_id:
                 new_conv_ref = self.db.collection('conversations').document()
                 conversation_id = new_conv_ref.id
@@ -191,38 +150,33 @@ class EWA:
                         'updated_at': firestore_time,
                         'title': title or f"{current_time.strftime('%b %d, %Y')} • New Essay",
                         'status': 'active'
-                    })
-                    st.session_state.current_conversation_id = conversation_id
-
+                    })  
+                    st.session_state.current_conversation_id = conversation_id                                                
+           
             if conversation_id:
                 conv_ref = self.db.collection('conversations').document(conversation_id)
                 conv_ref.collection('messages').add({
                     **message,
                     "timestamp": firestore_time
-                })
-
+                })                               
+                
                 conv_ref.set({
                     'updated_at': firestore_time,
                     'last_message': message['content'][:100]
                 }, merge=True)
-
-                # Clear the cache for this conversation's messages
-                self.get_conversation_messages.clear()
-                self.get_conversations.clear()
-
+            
             return conversation_id
-
+            
         except Exception as e:
             st.error(f"Error saving message: {str(e)}")
             return conversation_id
-
+    
     def handle_chat(self, prompt):
-        """Handle chat with OpenAI integration"""
         if not prompt:
             return
-
+        
         current_time = datetime.now(self.tz)
-        time_str = self.format_time(current_time.isoformat())
+        time_str = self.format_time(current_time)
 
         st.chat_message("user").write(f"{time_str} {prompt}")
 
@@ -231,47 +185,46 @@ class EWA:
             *(st.session_state.messages if 'messages' in st.session_state else []),
             {"role": "user", "content": prompt}
         ]
+               
+        response = OpenAI(api_key=st.secrets["default"]["OPENAI_API_KEY"]).chat.completions.create(
+            model="gpt-4o-mini",
+            messages=messages_context,
+            temperature=0,
+            max_tokens=200
+        )
+        
+        assistant_content = response.choices[0].message.content
+        st.chat_message("assistant").write(f"{time_str} {assistant_content}")
+        
+        if 'messages' not in st.session_state:
+            st.session_state.messages = []
+    
+        user_message = {"role": "user", "content": prompt, "timestamp": time_str}
+        assistant_msg = {"role": "assistant", "content": assistant_content, "timestamp": time_str}
 
+        st.session_state.messages.append(user_message)
+        st.session_state.messages.append(assistant_msg)
+               
         try:
-            response = OpenAI(api_key=st.secrets["default"]["OPENAI_API_KEY"]).chat.completions.create(
-                model="gpt-4o-mini",
-                messages=messages_context,
-                temperature=0,
-                max_tokens=200
-            )
-
-            assistant_content = response.choices[0].message.content
-            st.chat_message("assistant").write(f"{time_str} {assistant_content}")
-
-            if 'messages' not in st.session_state:
-                st.session_state.messages = []
-
-            user_message = {"role": "user", "content": prompt, "timestamp": time_str}
-            assistant_msg = {"role": "assistant", "content": assistant_content, "timestamp": time_str}
-
-            st.session_state.messages.append(user_message)
-            st.session_state.messages.append(assistant_msg)
-
             conversation_id = st.session_state.get('current_conversation_id')
+        
             conversation_id = self.save_message(
                 conversation_id,
                 {**user_message, "timestamp": current_time}
             )
+
             self.save_message(
                 conversation_id,
                 {**assistant_msg, "timestamp": current_time}
             )
-
         except Exception as e:
-            st.error(f"Error in chat handling: {str(e)}")
-
+            st.error(f"Error saving messages: {str(e)}")
+            
     def render_sidebar(self):
-        """Render sidebar with cached conversations"""
         with st.sidebar:
             st.title("Essay Writing Assistant")
             
             if st.button("+ New Session", use_container_width=True):
-                # Clear all relevant caches
                 st.cache_data.clear()
                 user = st.session_state.user
                 st.session_state.clear()
@@ -289,16 +242,20 @@ class EWA:
                 for conv in conversations:
                     conv_data = conv.to_dict()
                     if st.button(f"{conv_data.get('title', 'Untitled')}", key=conv.id):
-                        # Load cached messages when conversation is selected
-                        messages = self.get_conversation_messages(conv.id)
-                        st.session_state.messages = messages
                         st.session_state.current_conversation_id = conv.id
                         st.rerun()
             except Exception as e:
-                st.error(f"Error in sidebar: {str(e)}")
-
+                st.error(f"Error loading conversations: {str(e)}")
+    
+    def render_messages(self):
+        if 'messages' in st.session_state:
+            for msg in st.session_state.messages:
+                if msg["role"] != "system":
+                    st.chat_message(msg["role"]).write(
+                        f"{msg.get('timestamp', '')} {msg['content']}"
+                    )
+    
     def login(self, email, password):
-        """Handle user login with caching"""
         try:
             user = auth.get_user_by_email(email)
             st.session_state.user = user
@@ -308,11 +265,10 @@ class EWA:
                 "timestamp": self.format_time()
             }]
             return True
-        except Exception as e:
-            st.error(f"Login failed: {str(e)}")
+        except:
+            st.error("Login failed")
             return False
 
-# Main function remains the same
 def main():
     app = EWA()
     
