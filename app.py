@@ -34,6 +34,21 @@ class EWA:
         title = current_time.strftime('%b %d, %Y • ') + ' '.join(message_content.split()[:4])
         return title[:50] if len(title) > 50 else title
 
+    def get_stage_prompt(self, stage, essay_type=None, section=None):
+        """Get the appropriate prompt for the current stage"""
+        if stage not in STAGE_PROMPTS:
+            return None
+            
+        if stage == "drafting":
+            if section and section in STAGE_PROMPTS[stage]["section_prompts"]:
+                return STAGE_PROMPTS[stage]["section_prompts"][section]
+            return STAGE_PROMPTS[stage]["general_guidance"]
+            
+        if essay_type and essay_type in STAGE_PROMPTS[stage]:
+            return STAGE_PROMPTS[stage][essay_type]
+            
+        return None
+
     def get_conversations(self, user_id):
        """Retrieve conversation history from Firestore"""
        return db.collection('conversations')\
