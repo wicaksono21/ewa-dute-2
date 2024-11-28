@@ -7,7 +7,7 @@ import pytz
 
 # Import configurations
 from stageprompts import STAGE_PROMPTS, INITIAL_ASSISTANT_MESSAGE
-from reviewinstructions import REVIEW_INSTRUCTIONS, GRADING_CRITERIA, STYLE_GUIDES
+from reviewinstructions import REVIEW_INSTRUCTIONS, GRADING_CRITERIA, STYLE_GUIDES, SYSTEM_INSTRUCTIONS
 
 # Initialize Firebase
 if not firebase_admin._apps:
@@ -28,6 +28,11 @@ st.markdown("""
 class EWA:
     def __init__(self):
         self.tz = pytz.timezone("Europe/London")
+
+    def generate_title(self, message_content, current_time):
+        """Generate title from date and first 4 words of message"""
+        title = current_time.strftime('%b %d, %Y • ') + ' '.join(message_content.split()[:4])
+        return title[:50] if len(title) > 50 else title
 
     def get_conversations(self, user_id):
        """Retrieve conversation history from Firestore"""
@@ -94,10 +99,11 @@ class EWA:
         messages = [{"role": "system", "content": SYSTEM_INSTRUCTIONS}]
 
         # Add stage-specific guidance
-        if current_stage in STAGE_PROMPTS and essay_type in STAGE_PROMPTS.get(current_stage, {}):
+        stage_prompt = self.get_stage_prompt(current_stage, essay_type, current_section)
+        if stage_prompt:
             messages.append({
-                "role": "assistant",
-                "content": STAGE_PROMPTS[current_stage][essay_type]
+                "role": "system",
+                "content": f"Current stage: {current_stage}. {stage_prompt}"
             })
 
         # Add conversation history
@@ -180,8 +186,11 @@ class EWA:
             user = auth.get_user_by_email(email)
             st.session_state.user = user
             st.session_state.logged_in = True
-            st.session_state.messages = []
             st.session_state.stage = 'initial'
+            st.session_state.messages = []
+            # Add initial message with timestamp
+            initial_msg = {**INITIAL_ASSISTANT_MESSAGE, "timestamp": self.format_time()}
+            st.session_state.messages.append(initial_msg)
             return True
         except:
             st.error("Login failed")
