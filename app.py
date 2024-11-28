@@ -109,6 +109,7 @@ class EWA:
         # Get current stage and essay type
         current_stage = st.session_state.get('stage', 'initial')
         essay_type = st.session_state.get('essay_type', None)
+        current_section = st.session_state.get('current_section')
 
         # Build conversation context
         messages = [{"role": "system", "content": SYSTEM_INSTRUCTIONS}]
