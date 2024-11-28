@@ -5,6 +5,10 @@ from openai import OpenAI
 from datetime import datetime
 import pytz
 
+# Import configurations
+from stage_prompts import STAGE_PROMPTS, INITIAL_ASSISTANT_MESSAGE
+from review_instructions import REVIEW_INSTRUCTIONS, GRADING_CRITERIA, STYLE_GUIDES
+
 # Initialize Firebase
 if not firebase_admin._apps:
     cred = credentials.Certificate(dict(st.secrets["FIREBASE"]))
@@ -21,202 +25,50 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# Constants and Prompts
-INITIAL_ASSISTANT_MESSAGE = {
-    "role": "assistant",
-    "content": """Hi there! Let's work on your DUTE Part B Essay. You have two options:
-
-1. **Extending the group design case to a new problem**
-   - Redefine the educational challenge
-   - Analyze original design strengths/weaknesses
-   - Propose and justify modifications
-
-2. **Critiquing a data-driven technology's educational value**
-   - Analyze an existing educational technology
-   - Evaluate its impact and effectiveness
-   - Suggest improvements
-
-Which option would you like to explore? I'll guide you through the process."""
-}
-
-SYSTEM_INSTRUCTIONS = """Role: DUTE Essay Writing Assistant
-Primary Task: Guide students through their 2,500-word Part B essay development
-Focus: Keep responses brief and targeted. Ask guiding questions rather than providing direct content.
-
-Instructions:
-1. Topic Selection:
-    - Help student choose and refine their essay focus
-    - For Design Case: Guide analysis of original design and new context
-    - For Critique: Help select appropriate technology and value framework
-    
-2. Initial Outline Development:
-    - Confirm understanding of essay requirements
-    - Guide structure development
-    - Help identify key arguments and evidence needs
-
-3. Drafting Support (by section):
-    - Introduction guidance
-    - Body paragraph development
-    - Conclusion strengthening
-    - Support source integration
-
-4. Review and Feedback:
-    Assessment based on:
-        - Understanding & Analysis (40%)
-            * Topic understanding (15%)
-            * Literature review (15%)
-            * Creative thinking (10%)
-        - Research Approach (40%)
-            * Method & planning (10%)
-            * Analysis & insight (15%)
-            * Evidence support (15%)
-        - Structure (20%)
-            * Logical flow
-            * Strong conclusions
-            * Professional presentation"""
-
-GRADING_CRITERIA = """
-Essay Scoring Criteria (Total 100 points):
-
-Understanding & Analysis (40 points):
-- Topic Understanding (15 points)
-  * Shows deep understanding of main issues
-  * Breaks down complex ideas clearly
-  * Goes beyond basic descriptions
-- Literature Review (15 points)
-  * Uses relevant sources effectively
-  * Shows critical evaluation of sources
-  * Connects source material to own arguments
-- Creative Thinking (10 points)
-  * Combines ideas in original ways
-  * Develops new perspectives
-  * Shows independent thinking
-
-Research Approach (40 points):
-- Method & Planning (10 points)
-  * Uses appropriate research methods
-  * Shows clear connection to course themes
-  * Justifies chosen approach
-- Analysis & Insight (15 points)
-  * Shows clear understanding of arguments
-  * Develops own interpretations
-  * Creates meaningful insights
-- Evidence & Support (15 points)
-  * Backs up claims with evidence
-  * Explains research methods clearly
-  * Discusses limitations and validity
-
-Structure & Presentation (20 points):
-- Clear logical flow (5 points)
-- Strong conclusions (5 points)
-- Well-organized content (5 points)
-- Professional presentation (5 points)
-"""
-
-STAGE_PROMPTS = {
-    "topic_selection": {
-        "design_case": """Let's explore your design case extension:
-1. Original Design Context:
-   - What was the original educational challenge?
-   - What were the key features of your solution?
-   - What were the main theoretical frameworks used?
-
-2. New Problem Space:
-   - What new educational challenge do you want to address?
-   - How does it relate to the original problem?
-   - What new constraints or requirements exist?
-
-3. Analysis Focus:
-   - Which aspects of the original design will you analyze?
-   - What metrics will you use to evaluate effectiveness?
-   - How will you justify your modifications?""",
-        
-        "critique": """Let's define your technology critique focus:
-1. Technology Selection:
-   - Which educational technology interests you?
-   - What is its primary educational purpose?
-   - Who are the main users/stakeholders?
-
-2. Value Framework:
-   - How do you define educational value?
-   - What metrics will you use for evaluation?
-   - Which theoretical frameworks will you apply?
-
-3. Analysis Scope:
-   - Which aspects will you focus on?
-   - What evidence types will you consider?
-   - How will you structure your critique?"""
-    },
-    "outline": {
-        "design_case": """Let's develop your essay outline. Consider this structure:
-
-1. Introduction (250-300 words)
-   - Original design context
-   - New challenge identification
-   - Your approach overview
-
-2. Original Design Analysis (500-600 words)
-   - Key features and rationale
-   - Strengths and limitations
-   - Theoretical framework
-
-3. New Context Requirements (400-500 words)
-   - Educational environment
-   - User needs analysis
-   - Technical considerations
-
-4. Proposed Modifications (600-700 words)
-   - Design changes
-   - Implementation strategy
-   - Expected impacts
-
-5. Evaluation Framework (400-500 words)
-   - Success metrics
-   - Assessment methods
-   - Validation approach
-
-6. Conclusion (250-300 words)
-   - Summary of changes
-   - Implementation considerations
-   - Future directions""",
-        
-        "critique": """Let's structure your critique. Consider this outline:
-
-1. Introduction (250-300 words)
-   - Technology overview
-   - Educational context
-   - Value framework
-
-2. Technology Analysis (500-600 words)
-   - Feature description
-   - Pedagogical approach
-   - Technical implementation
-
-3. Stakeholder Impact (400-500 words)
-   - User experiences
-   - Implementation challenges
-   - Organizational effects
-
-4. Educational Value (600-700 words)
-   - Learning outcomes
-   - Engagement metrics
-   - Cost-benefit analysis
-
-5. Critical Discussion (400-500 words)
-   - Strengths and weaknesses
-   - Contextual factors
-   - Alternative approaches
-
-6. Conclusion (250-300 words)
-   - Overall assessment
-   - Recommendations
-   - Future considerations"""
-    }
-}
-
 class EWA:
     def __init__(self):
         self.tz = pytz.timezone("Europe/London")
+
+    def get_conversations(self, user_id):
+       """Retrieve conversation history from Firestore"""
+       return db.collection('conversations')\
+                .where('user_id', '==', user_id)\
+                .order_by('updated_at', direction=firestore.Query.DESCENDING)\
+                .limit(10)\
+                .stream()
+
+    def render_sidebar(self):
+        """Render sidebar with conversation history and controls"""
+        with st.sidebar:
+            st.title("Essay Writing Assistant")
+            
+            # New Session button
+            if st.button("+ New Session", use_container_width=True):
+                user = st.session_state.user  # Store user
+                st.session_state.clear()
+                st.session_state.user = user  # Restore user
+                st.session_state.logged_in = True
+                st.session_state.messages = [
+                    {**INITIAL_ASSISTANT_MESSAGE, "timestamp": self.format_time()}
+                ]
+                st.rerun()
+            
+            st.divider()
+            
+            # Display conversation history
+            for conv in self.get_conversations(st.session_state.user.uid):
+                conv_data = conv.to_dict()
+                if st.button(f"{conv_data.get('title', 'Untitled')}", key=conv.id):
+                    messages = db.collection('conversations').document(conv.id)\
+                              .collection('messages').order_by('timestamp').stream()
+                    st.session_state.messages = []
+                    for msg in messages:
+                        msg_dict = msg.to_dict()
+                        if 'timestamp' in msg_dict:
+                            msg_dict['timestamp'] = self.format_time(msg_dict['timestamp'])
+                        st.session_state.messages.append(msg_dict)
+                    st.session_state.current_conversation_id = conv.id
+                    st.rerun()
 
     def format_time(self, dt=None):
         if isinstance(dt, (datetime, type(firestore.SERVER_TIMESTAMP))):
@@ -350,11 +202,33 @@ def main():
         return
 
     # Main chat interface
-    st.title("DUTE Essay Writing Assistant")
+    app.render_sidebar()  # Add sidebar with conversation history
 
-    # Display current stage info
-    if st.session_state.get('stage') == 'initial':
-        st.write(INITIAL_ASSISTANT_MESSAGE["content"])
+    # Add stage selector
+    stages = ['topic', 'outline', 'drafting', 'review']
+    if 'stage' not in st.session_state:
+        st.session_state.stage = 'initial'
+
+    # Display stage selection if past initial stage
+    if st.session_state.stage != 'initial':
+        selected_stage = st.sidebar.selectbox(
+            "Current Stage",
+            stages,
+            index=stages.index(st.session_state.stage) if st.session_state.stage in stages else 0
+        )
+        if selected_stage != st.session_state.stage:
+            st.session_state.stage = selected_stage
+            st.rerun()
+
+    # Display current stage guidance
+    if st.session_state.stage in STAGE_PROMPTS:
+        stage_prompt = app.get_stage_prompt(
+            st.session_state.stage,
+            st.session_state.get('essay_type'),
+            st.session_state.get('current_section')
+        )
+        if stage_prompt:
+            st.info(stage_prompt)
 
     # Display message history
     if 'messages' in st.session_state:
@@ -363,20 +237,50 @@ def main():
                 f"{msg.get('timestamp', '')} {msg['content']}"
             )
 
+    # Section selector for drafting stage
+    if st.session_state.stage == 'drafting':
+        sections = ['introduction', 'body', 'conclusion']
+        current_section = st.sidebar.selectbox(
+            "Current Section",
+            sections,
+            index=sections.index(st.session_state.get('current_section', 'introduction')) 
+                if st.session_state.get('current_section') in sections else 0
+        )
+        if current_section != st.session_state.get('current_section'):
+            st.session_state.current_section = current_section
+            st.rerun()
+
+    # Progress tracking
+    if st.session_state.stage != 'initial':
+        progress = {
+            'topic': 0,
+            'outline': 1,
+            'drafting': 2,
+            'review': 3
+        }
+        current_progress = progress.get(st.session_state.stage, 0)
+        st.sidebar.progress(current_progress / 3)
+        st.sidebar.write(f"Stage {current_progress + 1}/4: {st.session_state.stage.title()}")
+
     # Chat input
     if prompt := st.chat_input("Type your message here..."):
-        app.handle_chat(prompt)
-        
-        # Basic stage progression
-        if st.session_state.get('stage') == 'initial':
+        # Stage progression logic
+        if st.session_state.stage == 'initial':
             if "1" in prompt:
                 st.session_state.stage = 'topic'
                 st.session_state.essay_type = 'design_case'
             elif "2" in prompt:
                 st.session_state.stage = 'topic'
                 st.session_state.essay_type = 'critique'
-        elif 'review' in prompt.lower():
+        elif 'outline' in prompt.lower() and st.session_state.stage == 'topic':
+            st.session_state.stage = 'outline'
+        elif 'draft' in prompt.lower() and st.session_state.stage == 'outline':
+            st.session_state.stage = 'drafting'
+            st.session_state.current_section = 'introduction'
+        elif 'review' in prompt.lower() and st.session_state.stage == 'drafting':
             st.session_state.stage = 'review'
+
+        app.handle_chat(prompt)
 
 if __name__ == "__main__":
     main()
