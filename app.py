@@ -6,8 +6,8 @@ from datetime import datetime
 import pytz
 
 # Import configurations
-from stage_prompts import STAGE_PROMPTS, INITIAL_ASSISTANT_MESSAGE
-from review_instructions import REVIEW_INSTRUCTIONS, GRADING_CRITERIA, STYLE_GUIDES
+from stageprompts import STAGE_PROMPTS, INITIAL_ASSISTANT_MESSAGE
+from reviewinstructions import REVIEW_INSTRUCTIONS, GRADING_CRITERIA, STYLE_GUIDES
 
 # Initialize Firebase
 if not firebase_admin._apps:
