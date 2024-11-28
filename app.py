@@ -5,158 +5,339 @@ from openai import OpenAI
 from datetime import datetime
 import pytz
 
-# Initialize Firebase and Firestore
+# Initialize Firebase
 if not firebase_admin._apps:
     cred = credentials.Certificate(dict(st.secrets["FIREBASE"]))
     firebase_admin.initialize_app(cred)
 db = firestore.client()
 
 # Page setup
-st.set_page_config(page_title="Essay Writing Assistant", layout="wide")
+st.set_page_config(page_title="DUTE Essay Writing Assistant", layout="wide")
 st.markdown("""
     <style>
         .main { max-width: 800px; margin: 0 auto; }
-        .chat-message { padding: 1rem; margin: 0.5rem 0; border-radius: 0.5rem; background-color: #444654; color: white !important; }
+        .chat-message { padding: 1rem; margin: 0.5rem 0; border-radius: 0.5rem; }
         #MainMenu, footer { visibility: hidden; }
     </style>
 """, unsafe_allow_html=True)
 
-# Keep only essential caching
-@st.cache_resource
-def get_static_messages():
-    return {
-        "initial": {
-            "role": "assistant",
-            "content": """Hi there! Ready to start your essay? I'm here to guide and help you improve your argumentative essay writing skills with activities like:
+# Constants and Prompts
+INITIAL_ASSISTANT_MESSAGE = {
+    "role": "assistant",
+    "content": """Hi there! Let's work on your DUTE Part B Essay. You have two options:
 
-1. **Topic Selection**
-2. **Outlining**
-3. **Drafting**
-4. **Reviewing**
-5. **Proofreading**
+1. **Extending the group design case to a new problem**
+   • Redefine the educational challenge
+   • Analyze original design strengths/weaknesses
+   • Propose and justify modifications
 
-What topic are you interested in writing about? If you'd like suggestions, just let me know!"""
-        },
-            "system": """Role: Essay Writing Assistant (300-500 words)
-Response Length: Keep answers brief and to the point. Max. 75 words per response.
-Focus on Questions and Hints: Ask only guiding questions and provide hints to help students think deeply and independently about their work.
-Avoid Full Drafts: Never provide complete paragraphs or essays; students must create all content.
+2. **Critiquing a data-driven technology's educational value**
+   • Analyze an existing educational technology
+   • Evaluate its impact and effectiveness
+   • Suggest improvements
+
+Which option would you like to explore? I'll guide you through the process."""
+}
+
+SYSTEM_INSTRUCTIONS = """Role: DUTE Essay Writing Assistant
+Primary Task: Guide students through their 2,500-word Part B essay development
+Focus: Keep responses brief and targeted. Ask guiding questions rather than providing direct content.
 
 Instructions:
 1. Topic Selection:
-    • Prompt: Begin by asking the student for their preferred argumentative essay topic. If they are unsure, suggest 2-3 debatable topics. Only proceed once a topic is chosen.
-    • Hint: "What controversial issue are you passionate about, and what position do you want to argue? Why is this issue important to you?"
+    • Help student choose and refine their essay focus
+    • For Design Case: Guide analysis of original design and new context
+    • For Critique: Help select appropriate technology and value framework
+    
 2. Initial Outline Development:
-Request the student's outline ideas. Confirm the outline before proceeding.
-    • Key Questions:
-        ○ Introduction: "What is your main argument or thesis statement that clearly states your position? (Estimated word limit: 50-100 words)"
-        ○ Body Paragraphs: "What key points will you present to support your thesis, and how will you address potential counterarguments? (Estimated word limit: 150-300 words)"
-        ○ Conclusion: "How will you summarize your argument and reinforce your thesis to persuade your readers? (Estimated word limit: 50-100 words)"
-Provide all guiding questions at once, then confirm the outline before proceeding.
-3. Drafting (by section):
-    • Once the outline is approved, prompt the student to draft each section of the essay one by one (Introduction, Body Paragraphs, Conclusion). Use up to two guiding questions for each section and pause for the student's draft.
-        ○ Guiding Questions for Introduction:
-            § "How will you hook your readers' attention on this issue?"
-            § "How will you present your thesis statement to clearly state your position?"
-        ○ Body Paragraphs:
-            § "What evidence and examples will you use to support each of your key points?"
-            § "How will you acknowledge and refute counterarguments to strengthen your position?"
-        ○ Conclusion:
-            § "How will you restate your thesis and main points to reinforce your argument?"
-            § "What call to action or final thought will you leave with your readers?"
-4. Review and Feedback (by section):
-    • Assessment: Evaluate the draft based on the rubric criteria, focusing on Content, Analysis, Organization & Structure, Quality of Writing, and Word Limit.
-    • Scoring: Provide an approximate score (1-4) for each of the following areas:
-        1. Content (30%) - Assess how well the student presents a clear, debatable position and addresses opposing views.
-        2. Analysis (30%) - Evaluate the strength and relevance of arguments and evidence, including the consideration of counterarguments.
-        3. Organization & Structure (15%) - Check the logical flow, clarity of structure, and effective use of transitions.
-        4. Quality of Writing (15%) - Review sentence construction, grammar, and overall writing clarity.
-        5. Word Limit (10%) - Determine if the essay adheres to the specified word count of 300-500 words.
-    • Feedback Format:
-        ○ Strengths: Highlight what the student has done well in each assessed area, aligning with rubric descriptors.
-        ○ Suggestions for Improvement: Offer specific advice on how to enhance their score in each area. For example:
-            § For Content: "Consider further exploring opposing views to deepen your argument."
-            § For Analysis: "Include more credible evidence to support your claims and strengthen your analysis."
-            § For Organization & Structure: "Improve the transitions between paragraphs for a more cohesive flow."
-            § For Quality of Writing: "Work on refining sentence structures to enhance clarity."
-            § For Word Limit: "Trim any unnecessary information to stay within the word limit."
-    • Feedback Guidelines:
-        ○ Provide up to two targeted feedback points per section, keeping suggestions constructive and actionable.
-        ○ Encourage the student to reflect on and revise their work based on this feedback before moving on to the next section.
-        ○ Avoid proofreading for grammar, punctuation, or spelling at this stage.
-    • Scoring Disclaimer: Mention that the score is an approximate evaluation to guide improvement and may differ from final grading.
-5. Proofreading (by section):
-    • After revisions, check for adherence to the rubric, proper citation, and argument strength.
-    • Focus on one section at a time, providing up to two feedback points related to grammar, punctuation, and clarity.
-6. Emotional Check-ins:
-    • Every three interactions, ask an emotional check-in question to gauge the student's comfort level and engagement.
-    • Check-in Question Examples:
-        ○ "How confident do you feel about presenting your argument effectively?"
-        ○ "How are you feeling about your progress so far?"
+    • Confirm understanding of essay requirements
+    • Guide structure development
+    • Help identify key arguments and evidence needs
+
+3. Drafting Support (by section):
+    • Introduction guidance
+    • Body paragraph development
+    • Conclusion strengthening
+    • Support source integration
+
+4. Review and Feedback:
+    Assessment based on:
+        - Understanding & Analysis (40%)
+            • Topic understanding (15%)
+            • Literature review (15%)
+            • Creative thinking (10%)
+        - Research Approach (40%)
+            • Method & planning (10%)
+            • Analysis & insight (15%)
+            • Evidence support (15%)
+        - Structure (20%)
+            • Logical flow
+            • Strong conclusions
+            • Professional presentation
 
 Additional Guidelines:
-    • Promote Critical Thinking: Encourage the student to reflect on their arguments, the evidence provided, and the effectiveness of addressing counterarguments.
-    • Active Participation: Always pause after questions or feedback, allowing students to revise independently.
-    • Clarification: If the student's response is unclear, always ask for more details before proceeding.
-    • Student Voice: Help the student preserve their unique style and voice, and avoid imposing your own suggestions on the writing.
-    • Strengthening Arguments: Emphasize the importance of logical reasoning, credible evidence, and effectively refuting counterarguments throughout the writing process."""
-    }
-# Single cached object instead of separate functions
-STATIC_MESSAGES = get_static_messages()
-    
+    • Encourage first-person writing with evidence support
+    • Guide use of APA referencing
+    • Help balance personal insights with research
+    • Maintain focus on educational technology context
+"""
 
+GRADING_CRITERIA = """
+Essay Scoring Criteria (Total 100 points):
+
+Understanding & Analysis (40 points):
+- Topic Understanding (15 points)
+  • Shows deep understanding of main issues
+  • Breaks down complex ideas clearly
+  • Goes beyond basic descriptions
+- Literature Review (15 points)
+  • Uses relevant sources effectively
+  • Shows critical evaluation of sources
+  • Connects source material to own arguments
+- Creative Thinking (10 points)
+  • Combines ideas in original ways
+  • Develops new perspectives
+  • Shows independent thinking
+
+Research Approach (40 points):
+- Method & Planning (10 points)
+  • Uses appropriate research methods
+  • Shows clear connection to course themes
+  • Justifies chosen approach
+- Analysis & Insight (15 points)
+  • Shows clear understanding of arguments
+  • Develops own interpretations
+  • Creates meaningful insights
+- Evidence & Support (15 points)
+  • Backs up claims with evidence
+  • Explains research methods clearly
+  • Discusses limitations and validity
+
+Structure & Presentation (20 points):
+- Clear logical flow (5 points)
+- Strong conclusions (5 points)
+- Well-organized content (5 points)
+- Professional presentation (5 points)
+"""
+
+STYLE_GUIDES = {
+    "general": [
+        "Use first person ('I think/believe/argue') when presenting your views",
+        "Support personal insights with academic evidence",
+        "Maintain consistent APA referencing",
+        "Balance personal voice with academic rigor"
+    ],
+    "design_case": [
+        "Clearly explain your reasoning for modifications",
+        "Compare and contrast with original design",
+        "Justify methodological choices"
+    ],
+    "critique": [
+        "Define educational value clearly",
+        "Consider multiple stakeholder perspectives",
+        "Support critiques with evidence"
+    ]
+}
+
+STAGE_PROMPTS = {
+    "topic_selection": {
+        "design_case": """Let's explore your design case extension:
+1. What aspects of the original design would you like to modify?
+2. What new educational context are you considering?
+3. How might the theoretical framework need to change?
+4. What additional data requirements do you envision?""",
+        
+        "critique": """Let's choose your technology for critique:
+1. Which educational technology interests you?
+2. What is its claimed educational value?
+3. Which stakeholder perspectives will you consider?
+4. What evidence will you examine?"""
+    },
+    "outline": {
+        "design_case": """Suggested outline structure:
+1. Introduction
+   - Original design context
+   - New challenge identification
+   - Your approach
+2. Original Design Analysis
+   - Key features and rationale
+   - Strengths and limitations
+3. New Context Requirements
+   - Educational environment
+   - User needs
+   - Data considerations
+4. Theoretical Framework
+   - Modifications needed
+   - Justification
+5. Methodological Approach
+   - Design methods
+   - Data collection and analysis
+6. Proposed Changes
+   - Specific modifications
+   - Implementation considerations
+7. Conclusion
+   - Implications
+   - Future work""",
+        
+        "critique": """Suggested outline structure:
+1. Introduction
+   - Technology overview
+   - Educational value framework
+2. Technology Analysis
+   - Features and functionality
+   - Pedagogical approach
+3. Stakeholder Perspectives
+   - Users (learners/teachers)
+   - Implementation context
+4. Evidence Evaluation
+   - Research support
+   - Implementation results
+5. Critical Analysis
+   - Strengths and limitations
+   - Educational impact
+6. Recommendations
+   - Improvements
+   - Future directions"""
+    },
+    "review": {
+        "prompts": [
+            "How effectively have you demonstrated understanding of the core issues?",
+            "How well have you integrated and evaluated sources?",
+            "What unique insights have you contributed?",
+            "How strong is your evidence and methodology?",
+            "How clear and logical is your essay structure?"
+        ],
+        "feedback_structure": {
+            "strengths": "Key strengths in your essay:",
+            "improvements": "Areas for improvement:",
+            "next_steps": "Suggested revisions:"
+        }
+    }
+}
+
+def get_stage_guidance(stage, essay_type=None):
+    """Returns appropriate guidance for the current stage and essay type"""
+    if stage == "initial":
+        return INITIAL_ASSISTANT_MESSAGE["content"]
+    elif stage == "review":
+        return STAGE_PROMPTS["review"]
+    elif essay_type and stage in STAGE_PROMPTS:
+        return STAGE_PROMPTS[stage][essay_type]
+    return ""
+
+def get_style_reminders(essay_type=None):
+    """Returns style reminders based on essay type"""
+    reminders = STYLE_GUIDES["general"]
+    if essay_type in STYLE_GUIDES:
+        reminders.extend(STYLE_GUIDES[essay_type])
+    return reminders
 
 class EWA:
     def __init__(self):
         self.tz = pytz.timezone("Europe/London")
 
-    def generate_title(self, message_content, current_time):  
-        title = current_time.strftime('%b %d, %Y • ') + ' '.join(message_content.split()[:4])
-        return title[:50] if len(title) > 50 else title
-    
     def format_time(self, dt=None):
         if isinstance(dt, (datetime, type(firestore.SERVER_TIMESTAMP))):
             return dt.strftime("[%Y-%m-%d %H:%M:%S]")
         dt = dt or datetime.now(self.tz)
         return dt.strftime("[%Y-%m-%d %H:%M:%S]")
-    
-    def get_conversations(self, user_id):
-        return db.collection('conversations')\
-                 .where('user_id', '==', user_id)\
-                 .order_by('updated_at', direction=firestore.Query.DESCENDING)\
-                 .limit(10)\
-                 .stream()
-    
+
+    def handle_chat(self, prompt):
+        """Main chat handler with integrated guidance"""
+        if not prompt:
+            return
+
+        current_time = datetime.now(self.tz)
+        time_str = self.format_time(current_time)
+
+        # Display user message
+        st.chat_message("user").write(f"{time_str} {prompt}")
+
+        # Get current stage and essay type from session state
+        current_stage = st.session_state.get('stage', 'initial')
+        essay_type = st.session_state.get('essay_type', None)
+
+        # Build conversation context
+        messages = [{"role": "system", "content": SYSTEM_INSTRUCTIONS}]
+
+        # Add stage-specific guidance
+        stage_guidance = get_stage_guidance(current_stage, essay_type)
+        if stage_guidance:
+            messages.append({"role": "assistant", "content": stage_guidance})
+
+        # Add style reminders if past initial stage
+        if current_stage not in ['initial', 'option']:
+            style_reminders = get_style_reminders(essay_type)
+            messages.append({"role": "assistant", "content": "\n".join(style_reminders)})
+
+        # Add grading criteria if in review stage
+        if current_stage == 'review':
+            messages.append({"role": "assistant", "content": GRADING_CRITERIA})
+
+        # Add conversation history
+        if 'messages' in st.session_state:
+            messages.extend(st.session_state.messages)
+
+        # Add current prompt
+        messages.append({"role": "user", "content": prompt})
+
+        # Get AI response
+        response = OpenAI(api_key=st.secrets["default"]["OPENAI_API_KEY"]).chat.completions.create(
+            model="gpt-4",
+            messages=messages,
+            temperature=0.7,
+            max_tokens=500
+        )
+
+        assistant_content = response.choices[0].message.content
+        st.chat_message("assistant").write(f"{time_str} {assistant_content}")
+
+        # Update session state
+        if 'messages' not in st.session_state:
+            st.session_state.messages = []
+
+        user_message = {"role": "user", "content": prompt, "timestamp": time_str}
+        assistant_msg = {"role": "assistant", "content": assistant_content, "timestamp": time_str}
+        
+        st.session_state.messages.extend([user_message, assistant_msg])
+
+        # Save to database
+        try:
+            conversation_id = st.session_state.get('current_conversation_id')
+            conversation_id = self.save_message(conversation_id, 
+                                             {**user_message, "timestamp": current_time})
+            self.save_message(conversation_id, 
+                            {**assistant_msg, "timestamp": current_time})
+        except Exception as e:
+            st.error(f"Error saving messages: {str(e)}")
+
     def save_message(self, conversation_id, message):
+        """Save message to database"""
         current_time = datetime.now(self.tz)
         firestore_time = firestore.SERVER_TIMESTAMP
 
         try:
-            # Create new conversation if it doesn't exist
             if not conversation_id:
-                # Generate new conversation ID and create conversation document
                 new_conv_ref = db.collection('conversations').document()
                 conversation_id = new_conv_ref.id
                 
                 if message['role'] == 'user':
-                    # Create conversation document first
-                    title = self.generate_title(message['content'], current_time)  # Added current_time parameter here
+                    title = f"{current_time.strftime('%b %d, %Y')} • DUTE Essay"
                     new_conv_ref.set({
                         'user_id': st.session_state.user.uid,
                         'created_at': firestore_time,
                         'updated_at': firestore_time,
-                        'title': title or f"{current_time.strftime('%b %d, %Y')} • New Essay",
+                        'title': title,
                         'status': 'active'
-                    })  
-                    st.session_state.current_conversation_id = conversation_id                                                
-           
-            # Save message to exisiting conversation
+                    })
+                    st.session_state.current_conversation_id = conversation_id
+
             if conversation_id:
                 conv_ref = db.collection('conversations').document(conversation_id)
                 conv_ref.collection('messages').add({
                     **message,
                     "timestamp": firestore_time
-                })                               
+                })
                 
                 conv_ref.set({
                     'updated_at': firestore_time,
@@ -168,118 +349,15 @@ class EWA:
         except Exception as e:
             st.error(f"Error saving message: {str(e)}")
             return conversation_id
-    
-    def handle_chat(self, prompt):
-        if not prompt:
-            return
-        
-        current_time = datetime.now(self.tz)
-        time_str = self.format_time(current_time)
 
-        # IMMEDIATE USER MESSAGE DISPLAY
-        st.chat_message("user").write(f"{time_str} {prompt}")
-
-        # Create messages context including system instructions and conversation history
-        messages_context = [
-            {"role": "system", "content": STATIC_MESSAGES["system"]},
-            *(st.session_state.messages if 'messages' in st.session_state else []),
-            {"role": "user", "content": prompt}
-        ]
-    
-        # Add current message to context
-        #messages_context.append({"role": "user", "content": prompt})
-               
-        # Get AI response
-        response = OpenAI(api_key=st.secrets["default"]["OPENAI_API_KEY"]).chat.completions.create(
-            model="gpt-4o-mini",
-            messages=messages_context,
-            temperature=0,
-            max_tokens=200
-        )
-        
-        # 4. IMMEDIATE ASSISTANT RESPONSE DISPLAY
-        assistant_content = response.choices[0].message.content
-        st.chat_message("assistant").write(f"{time_str} {assistant_content}")
-        
-        # 5. Update session state in background
-        if 'messages' not in st.session_state:
-            st.session_state.messages = []
-    
-        user_message = {"role": "user", "content": prompt, "timestamp": time_str}
-        assistant_msg = {"role": "assistant", "content": assistant_content, "timestamp": time_str}
-
-        # Update session state
-        st.session_state.messages.append(user_message)
-        st.session_state.messages.append(assistant_msg)
-               
-        # 5. DATABASE OPERATIONS (after display)
-        try:
-            # Get conversation ID if exists
-            conversation_id = st.session_state.get('current_conversation_id')
-        
-            # Save user message
-            conversation_id = self.save_message(
-                conversation_id,
-                {**user_message, "timestamp": current_time}  # Use actual timestamp for database
-            )
-
-            # Save assistant message
-            self.save_message(
-                conversation_id,
-                {**assistant_msg, "timestamp": current_time}  # Use actual timestamp for database
-            )
-        except Exception as e:
-            st.error(f"Error saving messages: {str(e)}")
-        # Continue even if save fails - messages are already displayed
-            
-    def render_sidebar(self):
-        with st.sidebar:
-            st.title("Essay Writing Assistant")
-            
-            if st.button("+ New Session", use_container_width=True):
-                user = st.session_state.user  # Store user
-                st.session_state.clear()
-                st.session_state.user = user  # Restore user
-                st.session_state.logged_in = True
-                st.session_state.messages = [
-                    {**STATIC_MESSAGES["initial"], "timestamp": self.format_time()}
-                ]
-                st.rerun()
-            
-            st.divider()
-            
-            for conv in self.get_conversations(st.session_state.user.uid):
-                conv_data = conv.to_dict()
-                if st.button(f"{conv_data.get('title', 'Untitled')}", key=conv.id):
-                    messages = db.collection('conversations').document(conv.id)\
-                              .collection('messages').order_by('timestamp').stream()
-                    st.session_state.messages = []
-                    for msg in messages:
-                        msg_dict = msg.to_dict()
-                        if 'timestamp' in msg_dict:
-                            msg_dict['timestamp'] = self.format_time(msg_dict['timestamp'])
-                        st.session_state.messages.append(msg_dict)
-                    st.session_state.current_conversation_id = conv.id
-                    st.rerun()
-    
-    def render_messages(self):
-        """Only render existing messages from session state"""
-        if 'messages' in st.session_state:
-            for msg in st.session_state.messages:
-                if msg["role"] != "system":
-                    st.chat_message(msg["role"]).write(
-                        f"{msg.get('timestamp', '')} {msg['content']}"
-                    )
-    
     def login(self, email, password):
+        """Handle user login"""
         try:
             user = auth.get_user_by_email(email)
             st.session_state.user = user
             st.session_state.logged_in = True
-            st.session_state.messages = [{
-                **STATIC_MESSAGES["initial"],
-                "timestamp": self.format_time()
-            }]
+            st.session_state.messages = []
+            st.session_state.stage = 'initial'
             return True
         except:
             st.error("Login failed")
@@ -287,10 +365,10 @@ class EWA:
 
 def main():
     app = EWA()
-    
+
     # Login page
     if not st.session_state.get('logged_in', False):
-        st.title("Essay Writing Assistant")
+        st.title("DUTE Essay Writing Assistant")
         with st.form("login"):
             email = st.text_input("Email")
             password = st.text_input("Password", type="password")
@@ -298,13 +376,35 @@ def main():
                 if app.login(email, password):
                     st.rerun()
         return
-    
+
     # Main chat interface
-    app.render_sidebar()
-    app.render_messages()
-    
+    st.title("DUTE Essay Writing Assistant")
+
+    # Display current stage info
+    if st.session_state.get('stage') == 'initial':
+        st.write(INITIAL_ASSISTANT_MESSAGE["content"])
+
+    # Display message history
+    if 'messages' in st.session_state:
+        for msg in st.session_state.messages:
+            st.chat_message(msg["role"]).write(
+                f"{msg.get('timestamp', '')} {msg['content']}"
+            )
+
+    # Chat input
     if prompt := st.chat_input("Type your message here..."):
         app.handle_chat(prompt)
+        
+        # Basic stage progression
+        if st.session_state.get('stage') == 'initial':
+            if "1" in prompt:
+                st.session_state.stage = 'topic'
+                st.session_state.essay_type = 'design_case'
+            elif "2" in prompt:
+                st.session_state.stage = 'topic'
+                st.session_state.essay_type = 'critique'
+        elif 'review' in prompt.lower():
+            st.session_state.stage = 'review'
 
 if __name__ == "__main__":
     main()
