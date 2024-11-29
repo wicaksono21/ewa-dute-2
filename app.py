@@ -131,7 +131,7 @@ class EWA:
 
         # Get AI response
         response = OpenAI(api_key=st.secrets["default"]["OPENAI_API_KEY"]).chat.completions.create(
-            model="gpt-4",
+            model="gpt-4o-mini",
             messages=messages,
             temperature=0.7,
             max_tokens=500
