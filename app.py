@@ -7,7 +7,7 @@ import pytz
 
 # Import configurations
 from stageprompts import INITIAL_ASSISTANT_MESSAGE
-from reviewinstructions import SYSTEM_INSTRUCTIONS
+from reviewinstructions import SYSTEM_INSTRUCTIONS, REVIEW_INSTRUCTIONS
 
 # Initialize Firebase
 if not firebase_admin._apps:
@@ -96,6 +96,14 @@ class EWA:
         # Build messages context
         messages = [{"role": "system", "content": SYSTEM_INSTRUCTIONS}]
         
+        # If the message contains review-related keywords, add review instructions
+        review_keywords = ["review", "assess", "grade", "evaluate", "score", "feedback"]
+        if any(keyword in prompt.lower() for keyword in review_keywords):
+            messages.append({
+                "role": "system",
+                "content": REVIEW_INSTRUCTIONS
+            })
+            
         # Add conversation history
         if 'messages' in st.session_state:
             messages.extend(st.session_state.messages)
