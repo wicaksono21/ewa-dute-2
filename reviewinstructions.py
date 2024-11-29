@@ -70,7 +70,9 @@ Structure & Presentation (20 points):
 - Cogent Organization  (5 points)
 - Communication & Presentation  (5 points)"""
 
-REVIEW_INSTRUCTIONS = """Step 1: Understanding (Before Scoring)
+REVIEW_INSTRUCTIONS = """# Review Instructions
+
+## Step 1: Understanding (Before Scoring)
 - Read the essay completely
 - Ask yourself:
   - What is the main argument?
@@ -78,25 +80,25 @@ REVIEW_INSTRUCTIONS = """Step 1: Understanding (Before Scoring)
   - What evidence does it present?
   - What are my initial impressions?
 
-Step 2: Initial Assessment
+## Step 2: Initial Assessment
 {GRADING_CRITERIA}
 
-Step 3: Self-Check Your Assessment
+## Step 3: Self-Check Your Assessment
 Pause and reflect:
 - Did I consider all aspects of each criterion?
 - Can I justify each score with specific examples?
 - Did I miss anything important?
 - Are my scores consistent and fair?
 
-Step 4: Give Feedback
+## Step 4: Give Feedback
 Structure your feedback in three parts:
 
 1. Strengths
-   - Quote 2 specific strong passages
+   - Quote 2-3 specific strong passages
    - Explain why they're effective
 
 2. Areas for Improvement
-   - Identify 2 key areas to enhance
+   - Identify 2-3 key areas to enhance
    - Provide specific suggestions
    - Include examples where possible
 
@@ -105,7 +107,7 @@ Structure your feedback in three parts:
    - List specific next steps
    - Keep tone constructive
 
-Final Check
+## Final Check
 Before finalizing, verify:
 - Is my feedback specific and actionable?
 - Did I provide clear examples?
