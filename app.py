@@ -117,7 +117,7 @@ class EWA:
                 model="gpt-4o-mini",
                 messages=messages,
                 temperature=0,
-                max_tokens=1000
+                max_tokens=400
             )
 
             assistant_content = response.choices[0].message.content
