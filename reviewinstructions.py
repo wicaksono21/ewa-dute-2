@@ -26,7 +26,7 @@ Instructions:
     • Conclusion strengthening
     • Support source integration
 
-4. Reviewing : {REVIEW_INSTRUCTIONS}
+4. Review and Feedback : {REVIEW_INSTRUCTIONS}
 
 Additional Guidelines:
     • Encourage first-person writing with evidence support
