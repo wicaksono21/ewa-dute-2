@@ -70,7 +70,7 @@ Structure & Presentation (20 points):
 - Cogent Organization  (5 points)
 - Communication & Presentation  (5 points)"""
 
-REVIEW_iNSTRUCTIONS =
+REVIEW_INSTRUCTIONS =
 
 """Step 1: Understanding (Before Scoring)
 - Read the essay completely
