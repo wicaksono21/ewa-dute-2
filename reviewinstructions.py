@@ -44,10 +44,34 @@ Additional Guidelines:
     • Help balance personal insights with research    
 """
 
-GRADING_CRITERIA = """Essay Scoring Criteria (Total 100 points):
+# reviewinstructions.py
+
+REVIEW_INSTRUCTIONS = """As you review the essay, please follow these three steps:
+
+1. Estimate Grade
+Read the essay carefully and reflect on these questions:
+- What is the main argument and how well is it developed?
+- How strong is the evidence and analysis?
+- How clear is the organization and presentation?
+
+Then assign scores using:
+{GRADING_CRITERIA}
+
+2. Identify Strengths
+- Point out 2-3 specific strong elements
+- Quote relevant passages as examples
+- Explain why these are effective
+
+3. Suggest Improvements
+- Identify 2-3 key areas for enhancement
+- Provide specific, actionable suggestions
+- Include practical examples where possible"""
+
+GRADING_CRITERIA = """
+Essay Scoring Criteria (Total 100 points):
 
 Understanding & Analysis (40 points):
-- Grasp of Field  (15 points)
+- Topic Understanding (15 points)
   • Shows deep understanding of main issues
   • Breaks down complex ideas clearly
   • Goes beyond basic descriptions
@@ -55,71 +79,30 @@ Understanding & Analysis (40 points):
   • Uses relevant sources effectively
   • Shows critical evaluation of sources
   • Connects source material to own arguments
-- Creativity & Independence (10 points)
+- Creative Thinking (10 points)
   • Combines ideas in original ways
   • Develops new perspectives
   • Shows independent thinking
 
-Research & Methodology  (40 points):
-- Systematic approach  (10 points)
+Research Approach (40 points):
+- Method & Planning (10 points)
   • Uses appropriate research methods
   • Shows clear connection to course themes
   • Justifies chosen approach
-- Interpretation & knowledge creation  (15 points)
+- Analysis & Insight (15 points)
   • Shows clear understanding of arguments
   • Develops own interpretations
   • Creates meaningful insights
-- Use of data/literature to drive argument  (15 points)
+- Evidence & Support (15 points)
   • Backs up claims with evidence
   • Explains research methods clearly
   • Discusses limitations and validity
 
 Structure & Presentation (20 points):
 - Clear logical flow (5 points)
-- Clear conclusions (5 points)
-- Cogent Organization  (5 points)
-- Communication & Presentation  (5 points)"""
+- Strong conclusions (5 points)
+- Well-organized content (5 points)
+- Professional presentation (5 points)"""
 
-REVIEW_INSTRUCTIONS = """# Review Instructions
-
-## Step 1: Understanding (Before Scoring)
-- Read the essay completely
-- Ask yourself:
-  - What is the main argument?
-  - Which type of essay is this (design case or critique)?
-  - What evidence does it present?
-  - What are my initial impressions?
-
-## Step 2: Initial Assessment
-{GRADING_CRITERIA}
-
-## Step 3: Self-Check Your Assessment
-Pause and reflect:
-- Did I consider all aspects of each criterion?
-- Can I justify each score with specific examples?
-- Did I miss anything important?
-- Are my scores consistent and fair?
-
-## Step 4: Give Feedback
-Structure your feedback in three parts:
-
-1. Strengths
-   - Quote 2-3 specific strong passages
-   - Explain why they're effective
-
-2. Areas for Improvement
-   - Identify 2-3 key areas to enhance
-   - Provide specific suggestions
-   - Include examples where possible
-
-3. Overall Assessment
-   - Summarize main points
-   - List specific next steps
-   - Keep tone constructive
-
-## Final Check
-Before finalizing, verify:
-- Is my feedback specific and actionable?
-- Did I provide clear examples?
-- Is my tone helpful and encouraging?
-- Are my suggestions practical?"""
+# Format the review instructions with the grading criteria
+REVIEW_INSTRUCTIONS = REVIEW_INSTRUCTIONS.format(GRADING_CRITERIA=GRADING_CRITERIA)
