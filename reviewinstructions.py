@@ -70,66 +70,46 @@ Structure & Presentation (20 points):
 - Cogent Organization  (5 points)
 - Communication & Presentation  (5 points)"""
 
-REVIEW_INSTRUCTIONS = f"""Please evaluate this essay following these metacognitive steps:
+REVIEW_iNSTRUCTIONS =
 
-1. Initial Understanding:
-   • Read through the essay carefully
-   • Clarify your understanding of the essay's main argument and approach
-   • Identify the type of essay (design case extension or technology critique)
-   • Note your initial impressions of strengths and areas for improvement
+"""Step 1: Understanding (Before Scoring)
+- Read the essay completely
+- Ask yourself:
+  - What is the main argument?
+  - Which type of essay is this (design case or critique)?
+  - What evidence does it present?
+  - What are my initial impressions?
 
-2. Preliminary Analysis:
-   • Identify relevant assessment criteria from below:
+Step 2: Initial Assessment
 {GRADING_CRITERIA}
-   • Make initial notes on how the essay meets each criterion
-   • Propose preliminary scores for each category
-   • Document specific examples that support your scoring
 
-3. Critical Assessment of Your Analysis:
-   • Review your preliminary scoring against the criteria again
-   • Challenge your initial impressions with these questions:
-     - Have you considered all aspects of each criterion?
-     - Are your scores consistent across categories?
-     - Is your evidence specific and relevant?
-     - Have you missed any important elements?
-   • Adjust scores and feedback based on this reassessment
+Step 3: Self-Check Your Assessment
+Pause and reflect:
+- Did I consider all aspects of each criterion?
+- Can I justify each score with specific examples?
+- Did I miss anything important?
+- Are my scores consistent and fair?
 
-4. Structured Feedback Development:
-   a) Scoring Summary
-      - Present final numerical scores for each category
-      - Provide clear justification for each score
-      - Ensure scoring consistency across categories
-      
-   b) Strengths Analysis
-      - Quote specific passages that demonstrate excellence
-      - Explain explicitly how these examples meet the criteria
-      - Show why these elements are particularly effective
-      
-   c) Improvement Suggestions
-      - Provide specific, actionable recommendations
-      - Prioritize 2-3 key areas for improvement
-      - Include concrete examples of how to enhance these areas
+Step 4: Give Feedback
+Structure your feedback in three parts:
 
-5. Final Review and Verification:
-   • Review your complete feedback for:
-     - Balance between strengths and improvements
-     - Specificity of examples and suggestions
-     - Clarity and constructiveness of feedback
-   • Verify that:
-     - All scores are justified with specific evidence
-     - Feedback aligns with the grading criteria
-     - Suggestions are specific and actionable
-     - Tone is constructive and encouraging
+1. Strengths
+   - Quote 2 specific strong passages
+   - Explain why they're effective
 
-Remember to:
-- Support all assessments with evidence from the text
-- Maintain a constructive and encouraging tone
-- Provide specific examples for both strengths and improvements
-- Focus on the most impactful areas for improvement
-- Consider the essay's adherence to the 2,500-word requirement
+2. Areas for Improvement
+   - Identify 2 key areas to enhance
+   - Provide specific suggestions
+   - Include examples where possible
 
-Before submitting your review, ask yourself:
-1. Have I thoroughly understood the essay's content and objectives?
-2. Is my assessment comprehensive and well-supported?
-3. Have I provided clear, actionable feedback?
-4. Is my review balanced and constructive?"""
+3. Overall Assessment
+   - Summarize main points
+   - List specific next steps
+   - Keep tone constructive
+
+Final Check
+Before finalizing, verify:
+- Is my feedback specific and actionable?
+- Did I provide clear examples?
+- Is my tone helpful and encouraging?
+- Are my suggestions practical?"""
