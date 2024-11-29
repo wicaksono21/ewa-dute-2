@@ -6,8 +6,8 @@ from datetime import datetime
 import pytz
 
 # Import configurations
-from stageprompts import STAGE_PROMPTS, INITIAL_ASSISTANT_MESSAGE
-from reviewinstructions import REVIEW_INSTRUCTIONS, GRADING_CRITERIA, STYLE_GUIDES, SYSTEM_INSTRUCTIONS
+from stage_prompts import INITIAL_ASSISTANT_MESSAGE
+from review_instructions import SYSTEM_INSTRUCTIONS
 
 # Initialize Firebase
 if not firebase_admin._apps:
@@ -29,36 +29,28 @@ class EWA:
     def __init__(self):
         self.tz = pytz.timezone("Europe/London")
 
+    def format_time(self, dt=None):
+        """Format datetime with consistent timezone"""
+        if isinstance(dt, (datetime, type(firestore.SERVER_TIMESTAMP))):
+            return dt.strftime("[%Y-%m-%d %H:%M:%S]")
+        dt = dt or datetime.now(self.tz)
+        return dt.strftime("[%Y-%m-%d %H:%M:%S]")
+
     def generate_title(self, message_content, current_time):
         """Generate title from date and first 4 words of message"""
         title = current_time.strftime('%b %d, %Y • ') + ' '.join(message_content.split()[:4])
         return title[:50] if len(title) > 50 else title
 
-    def get_stage_prompt(self, stage, essay_type=None, section=None):
-        """Get the appropriate prompt for the current stage"""
-        if stage not in STAGE_PROMPTS:
-            return None
-            
-        if stage == "drafting":
-            if section and section in STAGE_PROMPTS[stage]["section_prompts"]:
-                return STAGE_PROMPTS[stage]["section_prompts"][section]
-            return STAGE_PROMPTS[stage]["general_guidance"]
-            
-        if essay_type and essay_type in STAGE_PROMPTS[stage]:
-            return STAGE_PROMPTS[stage][essay_type]
-            
-        return None
-
     def get_conversations(self, user_id):
-       """Retrieve conversation history from Firestore"""
-       return db.collection('conversations')\
-                .where('user_id', '==', user_id)\
-                .order_by('updated_at', direction=firestore.Query.DESCENDING)\
-                .limit(10)\
-                .stream()
+        """Retrieve conversation history from Firestore"""
+        return db.collection('conversations')\
+                 .where('user_id', '==', user_id)\
+                 .order_by('updated_at', direction=firestore.Query.DESCENDING)\
+                 .limit(10)\
+                 .stream()
 
     def render_sidebar(self):
-        """Render sidebar with conversation history and controls"""
+        """Render sidebar with conversation history"""
         with st.sidebar:
             st.title("Essay Writing Assistant")
             
@@ -90,13 +82,8 @@ class EWA:
                     st.session_state.current_conversation_id = conv.id
                     st.rerun()
 
-    def format_time(self, dt=None):
-        if isinstance(dt, (datetime, type(firestore.SERVER_TIMESTAMP))):
-            return dt.strftime("[%Y-%m-%d %H:%M:%S]")
-        dt = dt or datetime.now(self.tz)
-        return dt.strftime("[%Y-%m-%d %H:%M:%S]")
-
     def handle_chat(self, prompt):
+        """Process chat messages and manage conversation flow"""
         if not prompt:
             return
 
@@ -106,22 +93,9 @@ class EWA:
         # Display user message
         st.chat_message("user").write(f"{time_str} {prompt}")
 
-        # Get current stage and essay type
-        current_stage = st.session_state.get('stage', 'initial')
-        essay_type = st.session_state.get('essay_type', None)
-        current_section = st.session_state.get('current_section')
-
-        # Build conversation context
+        # Build messages context
         messages = [{"role": "system", "content": SYSTEM_INSTRUCTIONS}]
-
-        # Add stage-specific guidance
-        stage_prompt = self.get_stage_prompt(current_stage, essay_type, current_section)
-        if stage_prompt:
-            messages.append({
-                "role": "system",
-                "content": f"Current stage: {current_stage}. {stage_prompt}"
-            })
-
+        
         # Add conversation history
         if 'messages' in st.session_state:
             messages.extend(st.session_state.messages)
@@ -129,37 +103,39 @@ class EWA:
         # Add current prompt
         messages.append({"role": "user", "content": prompt})
 
-        # Get AI response
-        response = OpenAI(api_key=st.secrets["default"]["OPENAI_API_KEY"]).chat.completions.create(
-            model="gpt-4o-mini",
-            messages=messages,
-            temperature=0.7,
-            max_tokens=500
-        )
-
-        assistant_content = response.choices[0].message.content
-        st.chat_message("assistant").write(f"{time_str} {assistant_content}")
-
-        # Update session state
-        if 'messages' not in st.session_state:
-            st.session_state.messages = []
-
-        user_message = {"role": "user", "content": prompt, "timestamp": time_str}
-        assistant_msg = {"role": "assistant", "content": assistant_content, "timestamp": time_str}
-        
-        st.session_state.messages.extend([user_message, assistant_msg])
-
-        # Save to database
         try:
+            # Get AI response
+            response = OpenAI(api_key=st.secrets["default"]["OPENAI_API_KEY"]).chat.completions.create(
+                model="gpt-4o-mini",
+                messages=messages,
+                temperature=0.7,
+                max_tokens=1000
+            )
+
+            assistant_content = response.choices[0].message.content
+            st.chat_message("assistant").write(f"{time_str} {assistant_content}")
+
+            # Update session state
+            if 'messages' not in st.session_state:
+                st.session_state.messages = []
+
+            user_message = {"role": "user", "content": prompt, "timestamp": time_str}
+            assistant_msg = {"role": "assistant", "content": assistant_content, "timestamp": time_str}
+            
+            st.session_state.messages.extend([user_message, assistant_msg])
+
+            # Save to database
             conversation_id = st.session_state.get('current_conversation_id')
             conversation_id = self.save_message(conversation_id, 
                                              {**user_message, "timestamp": current_time})
             self.save_message(conversation_id, 
                             {**assistant_msg, "timestamp": current_time})
+
         except Exception as e:
-            st.error(f"Error saving messages: {str(e)}")
+            st.error(f"Error processing message: {str(e)}")
 
     def save_message(self, conversation_id, message):
+        """Save message to Firestore database"""
         current_time = datetime.now(self.tz)
         firestore_time = firestore.SERVER_TIMESTAMP
 
@@ -169,7 +145,7 @@ class EWA:
                 conversation_id = new_conv_ref.id
                 
                 if message['role'] == 'user':
-                    title = f"{current_time.strftime('%b %d, %Y')} • DUTE Essay"
+                    title = self.generate_title(message['content'], current_time)
                     new_conv_ref.set({
                         'user_id': st.session_state.user.uid,
                         'created_at': firestore_time,
@@ -198,18 +174,18 @@ class EWA:
             return conversation_id
 
     def login(self, email, password):
+        """Handle user authentication"""
         try:
             user = auth.get_user_by_email(email)
             st.session_state.user = user
             st.session_state.logged_in = True
-            st.session_state.stage = 'initial'
             st.session_state.messages = []
             # Add initial message with timestamp
             initial_msg = {**INITIAL_ASSISTANT_MESSAGE, "timestamp": self.format_time()}
             st.session_state.messages.append(initial_msg)
             return True
-        except:
-            st.error("Login failed")
+        except Exception as e:
+            st.error(f"Login failed: {str(e)}")
             return False
 
 def main():
@@ -227,33 +203,8 @@ def main():
         return
 
     # Main chat interface
-    app.render_sidebar()  # Add sidebar with conversation history
-
-    # Add stage selector
-    stages = ['topic', 'outline', 'drafting', 'review']
-    if 'stage' not in st.session_state:
-        st.session_state.stage = 'initial'
-
-    # Display stage selection if past initial stage
-    if st.session_state.stage != 'initial':
-        selected_stage = st.sidebar.selectbox(
-            "Current Stage",
-            stages,
-            index=stages.index(st.session_state.stage) if st.session_state.stage in stages else 0
-        )
-        if selected_stage != st.session_state.stage:
-            st.session_state.stage = selected_stage
-            st.rerun()
-
-    # Display current stage guidance
-    if st.session_state.stage in STAGE_PROMPTS:
-        stage_prompt = app.get_stage_prompt(
-            st.session_state.stage,
-            st.session_state.get('essay_type'),
-            st.session_state.get('current_section')
-        )
-        if stage_prompt:
-            st.info(stage_prompt)
+    st.title("DUTE Essay Writing Assistant")
+    app.render_sidebar()
 
     # Display message history
     if 'messages' in st.session_state:
@@ -262,49 +213,8 @@ def main():
                 f"{msg.get('timestamp', '')} {msg['content']}"
             )
 
-    # Section selector for drafting stage
-    if st.session_state.stage == 'drafting':
-        sections = ['introduction', 'body', 'conclusion']
-        current_section = st.sidebar.selectbox(
-            "Current Section",
-            sections,
-            index=sections.index(st.session_state.get('current_section', 'introduction')) 
-                if st.session_state.get('current_section') in sections else 0
-        )
-        if current_section != st.session_state.get('current_section'):
-            st.session_state.current_section = current_section
-            st.rerun()
-
-    # Progress tracking
-    if st.session_state.stage != 'initial':
-        progress = {
-            'topic': 0,
-            'outline': 1,
-            'drafting': 2,
-            'review': 3
-        }
-        current_progress = progress.get(st.session_state.stage, 0)
-        st.sidebar.progress(current_progress / 3)
-        st.sidebar.write(f"Stage {current_progress + 1}/4: {st.session_state.stage.title()}")
-
     # Chat input
     if prompt := st.chat_input("Type your message here..."):
-        # Stage progression logic
-        if st.session_state.stage == 'initial':
-            if "1" in prompt:
-                st.session_state.stage = 'topic'
-                st.session_state.essay_type = 'design_case'
-            elif "2" in prompt:
-                st.session_state.stage = 'topic'
-                st.session_state.essay_type = 'critique'
-        elif 'outline' in prompt.lower() and st.session_state.stage == 'topic':
-            st.session_state.stage = 'outline'
-        elif 'draft' in prompt.lower() and st.session_state.stage == 'outline':
-            st.session_state.stage = 'drafting'
-            st.session_state.current_section = 'introduction'
-        elif 'review' in prompt.lower() and st.session_state.stage == 'drafting':
-            st.session_state.stage = 'review'
-
         app.handle_chat(prompt)
 
 if __name__ == "__main__":
