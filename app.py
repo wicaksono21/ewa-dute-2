@@ -226,13 +226,24 @@ class EWA:
     def login(self, email, password):
         """Handle user authentication"""
         try:
-            user = auth.get_user_by_email(email)
-            st.session_state.user = user
+            # Authenticate the user using the Firebase Client SDK
+            user = firebase.auth().sign_in_with_email_and_password(email, password)
+
+            # Get the ID token from the authenticated user
+            id_token = user['idToken']
+
+            # Verify the ID token on the server-side using the Firebase Admin SDK
+            decoded_token = auth.verify_id_token(id_token)
+
+            # Store the user information in the session state
+            st.session_state.user = decoded_token
             st.session_state.logged_in = True
             st.session_state.messages = []
+
             # Add initial message with timestamp
             initial_msg = {**INITIAL_ASSISTANT_MESSAGE, "timestamp": self.format_time()}
             st.session_state.messages.append(initial_msg)
+
             return True
         except Exception as e:
             st.error(f"Login failed: {str(e)}")
