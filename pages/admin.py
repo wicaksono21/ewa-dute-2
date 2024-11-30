@@ -178,26 +178,33 @@ class AdminDashboard:
                                   .order_by('updated_at', direction=firestore.Query.DESCENDING)
                                   .stream())
 
-                # Batch deletion section
-                st.subheader("Batch Operations")
-                
-                # Select All checkbox
-                if conversations:
-                    all_conv_ids = {conv.id for conv in conversations}
-                    if st.checkbox("Select All", key="select_all"):
-                        st.session_state.selected_conversations = all_conv_ids
-                    else:
-                        st.session_state.selected_conversations = set()
-
-                    # Show batch delete button if any conversations are selected
-                    if st.session_state.selected_conversations:
-                        if st.button(f"Delete Selected ({len(st.session_state.selected_conversations)})", 
-                                   type="primary",
-                                   key="delete_selected"):
-                            if self.delete_multiple_conversations(st.session_state.selected_conversations):
-                                st.success("Selected conversations deleted successfully")
+                # Show batch operations controls in a container
+                with st.container():
+                    col1, col2 = st.columns([1,5])
+                    with col1:
+                        # Select All checkbox
+                        if conversations:
+                            all_conv_ids = {conv.id for conv in conversations}
+                            if st.checkbox("Select All", key="select_all"):
+                                st.session_state.selected_conversations = all_conv_ids
+                            else:
                                 st.session_state.selected_conversations = set()
-                                st.rerun()
+                    
+                    with col2:
+                        # Show batch delete button if any conversations are selected
+                        if st.session_state.selected_conversations:
+                            if st.button(
+                                f"🗑️ Delete Selected ({len(st.session_state.selected_conversations)}) Conversations", 
+                                type="primary",
+                                key="delete_selected",
+                                use_container_width=True
+                            ):
+                                if self.delete_multiple_conversations(st.session_state.selected_conversations):
+                                    st.success("Selected conversations deleted successfully")
+                                    st.session_state.selected_conversations = set()
+                                    st.rerun()
+
+                st.divider()  # Add visual separator
 
                 # For each conversation
                 for conv in conversations:
