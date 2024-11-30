@@ -28,6 +28,8 @@ st.markdown("""
 class EWA:
     def __init__(self):
         self.tz = pytz.timezone("Europe/London")
+        self.conversations_per_page = 10  # Number of conversations per page
+
 
     def format_time(self, dt=None):
         """Format datetime with consistent timezone"""
@@ -41,34 +43,73 @@ class EWA:
         title = current_time.strftime('%b %d, %Y • ') + ' '.join(message_content.split()[:4])
         return title[:50] if len(title) > 50 else title
 
-    def get_conversations(self, user_id):
-        """Retrieve conversation history from Firestore"""
-        return db.collection('conversations')\
+    def get_conversations(self, user_id, page=0):
+        """Retrieve paginated conversation history from Firestore
+        Args:
+            user_id: The user's ID
+            page: Page number (0-based)
+        Returns:
+            tuple: (conversations, has_more)
+        """
+        # Calculate start position
+        start = page * self.conversations_per_page
+        
+        # Get one extra item to check if there are more pages
+        query = db.collection('conversations')\
                  .where('user_id', '==', user_id)\
                  .order_by('updated_at', direction=firestore.Query.DESCENDING)\
-                 .limit(10)\
-                 .stream()
+                 .limit(self.conversations_per_page + 1)
+        
+        # If not first page, use start_after with last doc from previous page
+        if page > 0:
+            # Get the last doc from previous page
+            last_doc = list(db.collection('conversations')
+                          .where('user_id', '==', user_id)
+                          .order_by('updated_at', direction=firestore.Query.DESCENDING)
+                          .limit(start)
+                          .stream())[-1]
+            query = query.start_after(last_doc)
+        
+        # Execute query
+        docs = list(query.stream())
+        
+        # Check if there are more pages
+        has_more = len(docs) > self.conversations_per_page
+        if has_more:
+            docs = docs[:-1]  # Remove the extra item
+            
+        return docs, has_more
 
-    def render_sidebar(self):
-        """Render sidebar with conversation history"""
+    ef render_sidebar(self):
+        """Render sidebar with paginated conversation history"""
         with st.sidebar:
             st.title("Essay Writing Assistant")
             
-            # New Session button
             if st.button("+ New Session", use_container_width=True):
-                user = st.session_state.user  # Store user
+                user = st.session_state.user
                 st.session_state.clear()
-                st.session_state.user = user  # Restore user
+                st.session_state.user = user
                 st.session_state.logged_in = True
                 st.session_state.messages = [
                     {**INITIAL_ASSISTANT_MESSAGE, "timestamp": self.format_time()}
                 ]
+                st.session_state.page = 0  # Reset pagination
                 st.rerun()
             
             st.divider()
             
-            # Display conversation history
-            for conv in self.get_conversations(st.session_state.user.uid):
+            # Initialize page number in session state if not exists
+            if 'page' not in st.session_state:
+                st.session_state.page = 0
+            
+            # Get paginated conversations
+            convs, has_more = self.get_conversations(
+                st.session_state.user.uid,
+                st.session_state.page
+            )
+            
+            # Display conversations
+            for conv in convs:
                 conv_data = conv.to_dict()
                 if st.button(f"{conv_data.get('title', 'Untitled')}", key=conv.id):
                     messages = db.collection('conversations').document(conv.id)\
@@ -81,6 +122,19 @@ class EWA:
                         st.session_state.messages.append(msg_dict)
                     st.session_state.current_conversation_id = conv.id
                     st.rerun()
+            
+            # Pagination controls
+            col1, col2 = st.columns(2)
+            with col1:
+                if st.session_state.page > 0:
+                    if st.button("← Previous"):
+                        st.session_state.page -= 1
+                        st.rerun()
+            with col2:
+                if has_more:
+                    if st.button("Next →"):
+                        st.session_state.page += 1
+                        st.rerun()
 
 
     def handle_chat(self, prompt):
