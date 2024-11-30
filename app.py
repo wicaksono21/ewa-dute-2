@@ -49,7 +49,7 @@ class EWA:
                  .limit(10)\
                  .stream()
 
-     def render_sidebar(self):
+    def render_sidebar(self):
         """Render sidebar with conversation history"""
         with st.sidebar:
             st.title("Essay Writing Assistant")
