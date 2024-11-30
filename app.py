@@ -80,7 +80,7 @@ class EWA:
             
         return docs, has_more
 
-    ef render_sidebar(self):
+    def render_sidebar(self):
         """Render sidebar with paginated conversation history"""
         with st.sidebar:
             st.title("Essay Writing Assistant")
