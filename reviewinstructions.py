@@ -38,30 +38,30 @@ Additional Guidelines:
     • Help balance personal insights with research    
 """
 
-REVIEW_INSTRUCTIONS = """When reviewing the essay, you MUST use this EXACT format for your response:
+REVIEW_INSTRUCTIONS = """As you review the essay, please follow these three steps:
 
-Thank you for sharing your essay! Here's my review based on the scoring criteria:
+1. Estimate Grade
+Read the essay carefully and reflect on these questions:
+- What is the main argument and how well is it developed?
+- How strong is the evidence and analysis?
+- How clear is the organization and presentation?
 
-Estimated Grade: [Insert Score]/100
-[NOTE: This is an approximate AI evaluation for learning purposes only. The final grade may differ. Please treat this as guidance rather than a definitive assessment.]
-
-Strengths:
-1. [First strength with specific example]
-2. [Second strength with specific example]
-3. [Third strength if applicable]
-
-Areas for Improvement:
-1. [First suggestion with specific example]
-2. [Second suggestion with specific example]
-3. [Third suggestion if applicable]
-
-Use the following criteria for scoring:
+Then assign scores using:
 {GRADING_CRITERIA}
 
-Remember to:
-1. Start with the exact format above
-2. Include the disclaimer note right after the grade
-3. Provide specific examples for each point"""
+When giving your assessment, start with EXACTLY these two lines:
+Estimated Grade: [X]/100
+*Note: This is an approximate AI evaluation for learning purposes only. The final grade may differ.*
+
+2. Identify Strengths
+- Point out 2-3 specific strong elements
+- Quote relevant passages as examples
+- Explain why these are effective
+
+3. Suggest Improvements
+- Identify 2-3 key areas for enhancement
+- Provide specific, actionable suggestions
+- Include practical examples where possible"""
 
 GRADING_CRITERIA = """
 Essay Scoring Criteria (Total 100 points):
