@@ -224,32 +224,20 @@ class EWA:
             return conversation_id
 
     def login(self, email, password):
-        """Handle user login with proper verification"""
+        """Handle user authentication"""
         try:
-            # Use signInWithEmailAndPassword from Firebase Admin SDK
             user = auth.get_user_by_email(email)
-            
-            # Verify credentials (add your own verification logic here)
-            if email == 'admin@gmail.com' and password == 'admin123':  # Replace with your actual admin credentials
-                # Update last login time
-                self.db.collection('users').document(user.uid).update({
-                    'last_login': firestore.SERVER_TIMESTAMP
-                })
-                
-                st.session_state.user = user
-                st.session_state.logged_in = True
-                st.session_state.messages = [{
-                    **INITIAL_ASSISTANT_MESSAGE,
-                    "timestamp": self.format_time()
-                }]
-                return True
-            else:
-                st.error("Invalid credentials")
-                return False
-                
+            st.session_state.user = user
+            st.session_state.logged_in = True
+            st.session_state.messages = []
+            # Add initial message with timestamp
+            initial_msg = {**INITIAL_ASSISTANT_MESSAGE, "timestamp": self.format_time()}
+            st.session_state.messages.append(initial_msg)
+            return True
         except Exception as e:
-            st.error(f"Login failed: Invalid email or password")
+            st.error(f"Login failed: {str(e)}")
             return False
+
 
 def main():
     app = EWA()
