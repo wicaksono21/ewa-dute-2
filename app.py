@@ -81,29 +81,29 @@ class EWA:
         return docs, has_more
 
     def render_sidebar(self):
-    """Render sidebar with paginated conversation history"""
-    with st.sidebar:
-        st.title("Essay Writing Assistant")
+        """Render sidebar with paginated conversation history"""
+        with st.sidebar:
+            st.title("Essay Writing Assistant")
         
-        # Top buttons row
-        col1, col2 = st.columns(2)
-        with col1:
-            if st.button("+ New Session", use_container_width=True):
-                user = st.session_state.user
-                st.session_state.clear()
-                st.session_state.user = user
-                st.session_state.logged_in = True
-                st.session_state.messages = [
-                    {**INITIAL_ASSISTANT_MESSAGE, "timestamp": self.format_time()}
-                ]
-                st.session_state.page = 0  # Reset pagination
-                st.rerun()
-        with col2:
-            if st.button("↑ Latest", use_container_width=True, key="latest_btn"):
-                st.session_state.page = 0  # Reset to first page
-                st.rerun()
+            # Top buttons row
+            col1, col2 = st.columns(2)
+            with col1:
+                if st.button("+ New Session", use_container_width=True):
+                    user = st.session_state.user
+                    st.session_state.clear()
+                    st.session_state.user = user
+                    st.session_state.logged_in = True
+                    st.session_state.messages = [
+                        {**INITIAL_ASSISTANT_MESSAGE, "timestamp": self.format_time()}
+                    ]
+                    st.session_state.page = 0  # Reset pagination
+                    st.rerun()
+            with col2:
+                if st.button("↑ Latest", use_container_width=True, key="latest_btn"):
+                    st.session_state.page = 0  # Reset to first page
+                    st.rerun()
         
-        st.divider()
+            st.divider()
         
         # Initialize page number in session state if not exists
         if 'page' not in st.session_state:
