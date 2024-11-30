@@ -228,8 +228,7 @@ class EWA:
         """Handle user authentication"""
         try:
             # Authenticate the user using the Firebase Client SDK
-            firebase_auth = firebase.auth()
-            user = firebase_auth.sign_in_with_email_and_password(email, password)
+            user = auth.sign_in_with_email_and_password(email, password)
 
             # Get the ID token from the authenticated user
             id_token = user['idToken']
