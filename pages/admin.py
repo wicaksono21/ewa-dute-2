@@ -166,8 +166,6 @@ class AdminDashboard:
                     conv_data = conv.to_dict()
                     conv_title = conv_data.get('title', 'Untitled')
                     
-                    # Update the conversation display section in render_dashboard method
-
                     with st.expander(f"View Essay: {conv_title}", expanded=True):
                         messages = self.db.collection('conversations').document(conv.id)\
                                   .collection('messages')\
@@ -178,8 +176,42 @@ class AdminDashboard:
                         prev_msg_time = None
                         
                         for msg in messages:
-                            # ... existing message processing code ...
-
+                            msg_data = msg.to_dict()
+                            timestamp = msg_data.get('timestamp')
+                            
+                            if timestamp:
+                                date = timestamp.astimezone(self.tz).strftime('%Y-%m-%d')
+                                time = timestamp.astimezone(self.tz).strftime('%H:%M:%S')
+                                
+                                if prev_msg_time:
+                                    curr_seconds = int(time.split(':')[0]) * 3600 + \
+                                                 int(time.split(':')[1]) * 60 + \
+                                                 int(time.split(':')[2])
+                                    prev_seconds = int(prev_msg_time.split(':')[0]) * 3600 + \
+                                                 int(prev_msg_time.split(':')[1]) * 60 + \
+                                                 int(prev_msg_time.split(':')[2])
+                                    response_time = curr_seconds - prev_seconds
+                                else:
+                                    response_time = 'N/A'
+                                    
+                                prev_msg_time = time
+                            else:
+                                date = 'N/A'
+                                time = 'N/A'
+                                response_time = 'N/A'
+                                
+                            content = msg_data.get('content', '')
+                            word_count = len(content.split()) if content else 0
+                            
+                            detailed_data.append({
+                                'date': date,
+                                'time': time,
+                                'role': msg_data.get('role', 'N/A'),
+                                'content': content,
+                                'length': word_count,
+                                'response_time': response_time
+                            })
+                        
                         if detailed_data:
                             st.dataframe(
                                 detailed_data,
