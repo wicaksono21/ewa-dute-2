@@ -10,7 +10,26 @@ class AdminDashboard:
         self.tz = pytz.timezone("Europe/London")
         if 'selected_conversations' not in st.session_state:
             st.session_state.selected_conversations = set()
+        if 'show_batch_delete' not in st.session_state:
+            st.session_state.show_batch_delete = False
     
+    def handle_selection(self, conv_id, is_selected):
+        """Handle conversation selection without triggering rerun"""
+        if is_selected:
+            st.session_state.selected_conversations.add(conv_id)
+        else:
+            st.session_state.selected_conversations.discard(conv_id)
+        st.session_state.show_batch_delete = len(st.session_state.selected_conversations) > 0
+
+    def handle_select_all(self, conversations):
+        """Handle select all without triggering rerun"""
+        all_ids = {conv.id for conv in conversations}
+        if len(st.session_state.selected_conversations) == len(all_ids):
+            st.session_state.selected_conversations = set()
+        else:
+            st.session_state.selected_conversations = all_ids
+        st.session_state.show_batch_delete = len(st.session_state.selected_conversations) > 0
+
     def create_user_document(self, user):
         """Create or update user document in Firestore"""
         try:
@@ -60,11 +79,8 @@ class AdminDashboard:
     def delete_conversation(self, conversation_id):
         """Delete a single conversation and all its messages"""
         try:
-            # Delete all messages in the conversation
             messages_ref = self.db.collection('conversations').document(conversation_id).collection('messages')
             self._batch_delete(messages_ref)
-            
-            # Delete the conversation document
             self.db.collection('conversations').document(conversation_id).delete()
             return True
         except Exception as e:
@@ -75,7 +91,6 @@ class AdminDashboard:
         """Delete all conversations for a specific user"""
         try:
             conversations = self.db.collection('conversations').where('user_id', '==', user_id).stream()
-            
             for conv in conversations:
                 self.delete_conversation(conv.id)
             return True
@@ -97,11 +112,9 @@ class AdminDashboard:
         """Helper method to delete collection in batches"""
         docs = collection_ref.limit(batch_size).stream()
         deleted = 0
-
         for doc in docs:
             doc.reference.delete()
             deleted += 1
-
         if deleted >= batch_size:
             return self._batch_delete(collection_ref, batch_size)
     
@@ -178,33 +191,36 @@ class AdminDashboard:
                                   .order_by('updated_at', direction=firestore.Query.DESCENDING)
                                   .stream())
 
-                # Show batch operations controls in a container
-                with st.container():
-                    col1, col2 = st.columns([1,5])
-                    with col1:
-                        # Select All checkbox
-                        if conversations:
-                            all_conv_ids = {conv.id for conv in conversations}
-                            if st.checkbox("Select All", key="select_all"):
-                                st.session_state.selected_conversations = all_conv_ids
-                            else:
-                                st.session_state.selected_conversations = set()
-                    
-                    with col2:
-                        # Show batch delete button if any conversations are selected
-                        if st.session_state.selected_conversations:
-                            if st.button(
-                                f"🗑️ Delete Selected ({len(st.session_state.selected_conversations)}) Conversations", 
-                                type="primary",
-                                key="delete_selected",
-                                use_container_width=True
-                            ):
-                                if self.delete_multiple_conversations(st.session_state.selected_conversations):
-                                    st.success("Selected conversations deleted successfully")
-                                    st.session_state.selected_conversations = set()
-                                    st.rerun()
+                # Show batch operations controls in a fixed position
+                if st.session_state.show_batch_delete:
+                    st.markdown(
+                        f"""
+                        <div style='position: fixed; top: 0; right: 0; padding: 1rem; 
+                        background-color: #262730; z-index: 1000; border-radius: 0.5rem; 
+                        margin: 1rem; box-shadow: 0 0 10px rgba(0,0,0,0.5);'>
+                            <p>Selected: {len(st.session_state.selected_conversations)}</p>
+                        </div>
+                        """,
+                        unsafe_allow_html=True
+                    )
+                    if st.button(
+                        f"🗑️ Delete Selected ({len(st.session_state.selected_conversations)})", 
+                        type="primary",
+                        key="batch_delete"
+                    ):
+                        if self.delete_multiple_conversations(st.session_state.selected_conversations):
+                            st.session_state.selected_conversations = set()
+                            st.session_state.show_batch_delete = False
+                            st.rerun()
 
-                st.divider()  # Add visual separator
+                # Select All checkbox
+                if conversations:
+                    if st.checkbox("Select All", 
+                                 value=len(st.session_state.selected_conversations) == len(conversations),
+                                 on_change=self.handle_select_all,
+                                 args=(conversations,),
+                                 key="select_all"):
+                        pass  # Selection handled in on_change callback
 
                 # For each conversation
                 for conv in conversations:
@@ -214,11 +230,12 @@ class AdminDashboard:
                     # Checkbox for batch selection
                     col1, col2 = st.columns([0.1, 0.9])
                     with col1:
+                        is_selected = conv.id in st.session_state.selected_conversations
                         if st.checkbox("", key=f"select_{conv.id}", 
-                                     value=conv.id in st.session_state.selected_conversations):
-                            st.session_state.selected_conversations.add(conv.id)
-                        else:
-                            st.session_state.selected_conversations.discard(conv.id)
+                                     value=is_selected,
+                                     on_change=self.handle_selection,
+                                     args=(conv.id, not is_selected)):
+                            pass  # Selection handled in on_change callback
                     
                     with col2:
                         with st.expander(f"View Essay: {conv_title}", expanded=True):
