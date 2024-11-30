@@ -43,112 +43,81 @@ class EWA:
         title = current_time.strftime('%b %d, %Y • ') + ' '.join(message_content.split()[:4])
         return title[:50] if len(title) > 50 else title
 
-    def get_conversations(self, user_id, page=0):
-        """Retrieve paginated conversation history from Firestore
-        Args:
-            user_id: The user's ID
-            page: Page number (0-based)
-        Returns:
-            tuple: (conversations, has_more)
-        """
-        # Calculate start position
-        start = page * self.conversations_per_page
-        
-        # Get one extra item to check if there are more pages
-        query = db.collection('conversations')\
+    def get_conversations(self, user_id):
+        """Retrieve conversation history from Firestore"""
+        # Get total conversation count
+        count = len(list(db.collection('conversations')
+                        .where('user_id', '==', user_id)
+                        .stream()))
+    
+        # Calculate start position based on current page
+        page = st.session_state.get('page', 0)
+        start = page * 10
+    
+        return db.collection('conversations')\
                  .where('user_id', '==', user_id)\
                  .order_by('updated_at', direction=firestore.Query.DESCENDING)\
-                 .limit(self.conversations_per_page + 1)
-        
-        # If not first page, use start_after with last doc from previous page
-        if page > 0:
-            # Get the last doc from previous page
-            last_doc = list(db.collection('conversations')
-                          .where('user_id', '==', user_id)
-                          .order_by('updated_at', direction=firestore.Query.DESCENDING)
-                          .limit(start)
-                          .stream())[-1]
-            query = query.start_after(last_doc)
-        
-        # Execute query
-        docs = list(query.stream())
-        
-        # Check if there are more pages
-        has_more = len(docs) > self.conversations_per_page
-        if has_more:
-            docs = docs[:-1]  # Remove the extra item
-            
-        return docs, has_more
+                 .offset(start)\
+                 .limit(10)\
+                 .stream(), count > (start + 10)
 
     def render_sidebar(self):
-        """Render sidebar with paginated conversation history"""
+        """Render sidebar with conversation history"""
         with st.sidebar:
             st.title("Essay Writing Assistant")
         
-            # Navigation buttons in a more compact layout
-            button_cols = st.columns([1, 1])
-            with button_cols[0]:
-                if st.button("New Session", use_container_width=True):
-                    user = st.session_state.user
-                    st.session_state.clear()
-                    st.session_state.user = user
-                    st.session_state.logged_in = True
-                    st.session_state.messages = [
-                        {**INITIAL_ASSISTANT_MESSAGE, "timestamp": self.format_time()}
-                    ]
-                    st.session_state.page = 0
-                    st.rerun()
+            if st.button("New Session"):
+                user = st.session_state.user
+                st.session_state.clear()
+                st.session_state.user = user
+                st.session_state.logged_in = True
+                st.session_state.messages = [
+                    {**INITIAL_ASSISTANT_MESSAGE, "timestamp": self.format_time()}
+                ]
+                st.session_state.page = 0
+                st.rerun()
+            
+            if st.button("Latest"):
+                st.session_state.page = 0
+                st.rerun()
+            
+            st.divider()
         
-            with button_cols[1]:
-                if st.button("Latest", use_container_width=True, key="latest_btn"):
-                    st.session_state.page = 0
-                    st.rerun()
-        
-            # Small visual separator
-            st.markdown("<div style='margin: 0.5em 0;'></div>", unsafe_allow_html=True)
-        
-            # Initialize page number
+            # Initialize page if not exists
             if 'page' not in st.session_state:
                 st.session_state.page = 0
+            
+            # Get conversations and has_more flag
+            convs, has_more = self.get_conversations(st.session_state.user.uid)
         
-            # Get conversations
-            convs, has_more = self.get_conversations(
-                st.session_state.user.uid,
-                st.session_state.page
-            )
-        
-            # Display conversations with consistent styling
+            # Display conversations
             for conv in convs:
                 conv_data = conv.to_dict()
-                title = conv_data.get('title', 'Untitled')
-                if st.button(title, 
-                        key=conv.id,
-                        use_container_width=True):
+                if st.button(f"{conv_data.get('title', 'Untitled')}", key=conv.id):
                     messages = db.collection('conversations').document(conv.id)\
-                          .collection('messages').order_by('timestamp').stream()
+                               .collection('messages').order_by('timestamp').stream()
                     st.session_state.messages = []
                     for msg in messages:
                         msg_dict = msg.to_dict()
                         if 'timestamp' in msg_dict:
                             msg_dict['timestamp'] = self.format_time(msg_dict['timestamp'])
-                    st.session_state.messages.append(msg_dict)
-                st.session_state.current_conversation_id = conv.id
-                st.rerun()
+                        st.session_state.messages.append(msg_dict)
+                    st.session_state.current_conversation_id = conv.id
+                    st.rerun()
         
-            # Pagination controls at bottom with more compact layout
-            if st.session_state.page > 0 or has_more:
-                nav_cols = st.columns([1, 1])
-                with nav_cols[0]:
-                    if st.session_state.page > 0:
-                        if st.button("← Previous", use_container_width=True, key="prev_btn"):
-                            st.session_state.page -= 1
-                            st.rerun()
-                with nav_cols[1]:
-                    if has_more:
-                        if st.button("Next →", use_container_width=True, key="next_btn"):
-                            st.session_state.page += 1
-                            st.rerun()
-
+            # Simple pagination controls
+            cols = st.columns(2)
+            with cols[0]:
+                if st.session_state.page > 0:
+                    if st.button("Previous"):
+                        st.session_state.page -= 1
+                        st.rerun()
+            with cols[1]:
+                if has_more:
+                    if st.button("Next"):
+                        st.session_state.page += 1
+                        st.rerun()
+    
     def handle_chat(self, prompt):
         """Process chat messages and manage conversation flow"""
         if not prompt:
