@@ -42,101 +42,46 @@ class EWA:
         return title[:50] if len(title) > 50 else title
 
     def get_conversations(self, user_id):
-        """Retrieve paginated conversation history from Firestore"""
-        # Initialize pagination in session state if not exists
-        if 'page_number' not in st.session_state:
-            st.session_state.page_number = 0
-            st.session_state.conversations_cache = {}
-            st.session_state.has_next = True
-            st.session_state.page_cursors = [None]  # First page starts with no cursor
+        """Retrieve conversation history from Firestore"""
+        return db.collection('conversations')\
+                 .where('user_id', '==', user_id)\
+                 .order_by('updated_at', direction=firestore.Query.DESCENDING)\
+                 .limit(10)\
+                 .stream()
 
-        page = st.session_state.page_number
-        page_size = 10
-
-        # Check if page is already cached
-        if page in st.session_state.conversations_cache:
-            return st.session_state.conversations_cache[page]
-
-        # Create base query
-        query = db.collection('conversations')\
-             .where('user_id', '==', user_id)\
-             .order_by('updated_at', direction=firestore.Query.DESCENDING)\
-             .limit(page_size)
-
-        # Add cursor if not first page
-        if st.session_state.page_cursors[page]:
-            query = query.start_after(st.session_state.page_cursors[page])
-
-        # Fetch conversations
-        conversations = list(query.stream())
-    
-        # Cache the results
-        st.session_state.conversations_cache[page] = conversations
-    
-        # Update has_next and cursor for next page
-        st.session_state.has_next = len(conversations) == page_size
-        if st.session_state.has_next and len(st.session_state.page_cursors) <= page + 1:
-            st.session_state.page_cursors.append(conversations[-1])
-
-        return conversations
-
-    def render_sidebar(self):
-        """Render sidebar with paginated conversation history"""
+     def render_sidebar(self):
+        """Render sidebar with conversation history"""
         with st.sidebar:
             st.title("Essay Writing Assistant")
-        
+            
             # New Session button
             if st.button("+ New Session", use_container_width=True):
-                user = st.session_state.user
+                user = st.session_state.user  # Store user
                 st.session_state.clear()
-                st.session_state.user = user
+                st.session_state.user = user  # Restore user
                 st.session_state.logged_in = True
                 st.session_state.messages = [
                     {**INITIAL_ASSISTANT_MESSAGE, "timestamp": self.format_time()}
-            ]
-            st.rerun()
-        
-        st.divider()
-        
-        # Display conversations
-        conversations = self.get_conversations(st.session_state.user.uid)
-        for conv in conversations:
-            conv_data = conv.to_dict()
-            if st.button(f"{conv_data.get('title', 'Untitled')}", key=conv.id):
-                messages = db.collection('conversations').document(conv.id)\
-                          .collection('messages').order_by('timestamp').stream()
-                st.session_state.messages = []
-                for msg in messages:
-                    msg_dict = msg.to_dict()
-                    if 'timestamp' in msg_dict:
-                        msg_dict['timestamp'] = self.format_time(msg_dict['timestamp'])
-                    st.session_state.messages.append(msg_dict)
-                st.session_state.current_conversation_id = conv.id
+                ]
                 st.rerun()
-
-        # Navigation controls
-        col1, col2, col3 = st.columns(3)
-        
-        with col1:
-            if st.session_state.page_number > 0:
-                if st.button("← Previous"):
-                    st.session_state.page_number -= 1
-                    st.rerun()
-        
-        with col2:
-            st.write(f"Page {st.session_state.page_number + 1}")
             
-        with col3:
-            if st.session_state.has_next:
-                if st.button("Next →"):
-                    st.session_state.page_number += 1
+            st.divider()
+            
+            # Display conversation history
+            for conv in self.get_conversations(st.session_state.user.uid):
+                conv_data = conv.to_dict()
+                if st.button(f"{conv_data.get('title', 'Untitled')}", key=conv.id):
+                    messages = db.collection('conversations').document(conv.id)\
+                              .collection('messages').order_by('timestamp').stream()
+                    st.session_state.messages = []
+                    for msg in messages:
+                        msg_dict = msg.to_dict()
+                        if 'timestamp' in msg_dict:
+                            msg_dict['timestamp'] = self.format_time(msg_dict['timestamp'])
+                        st.session_state.messages.append(msg_dict)
+                    st.session_state.current_conversation_id = conv.id
                     st.rerun()
 
-        # Reset navigation
-        if st.session_state.page_number > 0:
-            if st.button("Back to Latest", use_container_width=True):
-                st.session_state.page_number = 0
-                st.rerun()
 
     def handle_chat(self, prompt):
         """Process chat messages and manage conversation flow"""
