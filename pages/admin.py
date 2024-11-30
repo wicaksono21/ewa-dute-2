@@ -166,22 +166,9 @@ class AdminDashboard:
                     conv_data = conv.to_dict()
                     conv_title = conv_data.get('title', 'Untitled')
                     
+                    # Update the conversation display section in render_dashboard method
+
                     with st.expander(f"View Essay: {conv_title}", expanded=True):
-                        # Add delete button inside expander
-                        col1, col2 = st.columns([5,1])
-                        with col2:
-                            if st.button("Delete Conversation", key=f"delete_{conv.id}", type="secondary"):
-                                if st.session_state.get(f'confirm_delete_{conv.id}'):
-                                    if self.delete_conversation(conv.id):
-                                        st.success("Conversation deleted successfully")
-                                        st.rerun()
-                                    st.session_state[f'confirm_delete_{conv.id}'] = False
-                                else:
-                                    st.session_state[f'confirm_delete_{conv.id}'] = True
-                                    st.warning("Click again to confirm deletion")
-                        
-                        st.divider()
-                        
                         messages = self.db.collection('conversations').document(conv.id)\
                                   .collection('messages')\
                                   .order_by('timestamp')\
@@ -191,42 +178,8 @@ class AdminDashboard:
                         prev_msg_time = None
                         
                         for msg in messages:
-                            msg_data = msg.to_dict()
-                            timestamp = msg_data.get('timestamp')
-                            
-                            if timestamp:
-                                date = timestamp.astimezone(self.tz).strftime('%Y-%m-%d')
-                                time = timestamp.astimezone(self.tz).strftime('%H:%M:%S')
-                                
-                                if prev_msg_time:
-                                    curr_seconds = int(time.split(':')[0]) * 3600 + \
-                                                 int(time.split(':')[1]) * 60 + \
-                                                 int(time.split(':')[2])
-                                    prev_seconds = int(prev_msg_time.split(':')[0]) * 3600 + \
-                                                 int(prev_msg_time.split(':')[1]) * 60 + \
-                                                 int(prev_msg_time.split(':')[2])
-                                    response_time = curr_seconds - prev_seconds
-                                else:
-                                    response_time = 'N/A'
-                                    
-                                prev_msg_time = time
-                            else:
-                                date = 'N/A'
-                                time = 'N/A'
-                                response_time = 'N/A'
-                                
-                            content = msg_data.get('content', '')
-                            word_count = len(content.split()) if content else 0
-                            
-                            detailed_data.append({
-                                'date': date,
-                                'time': time,
-                                'role': msg_data.get('role', 'N/A'),
-                                'content': content,
-                                'length': word_count,
-                                'response_time': response_time
-                            })
-                        
+                            # ... existing message processing code ...
+
                         if detailed_data:
                             st.dataframe(
                                 detailed_data,
@@ -248,16 +201,28 @@ class AdminDashboard:
                                 key=f"dataframe_{conv.id}"
                             )
                             
-                            # Add download button for CSV
-                            df = pd.DataFrame(detailed_data)
-                            csv = df.to_csv(index=False).encode('utf-8')
-                            st.download_button(
-                                label="Download Chat Log as CSV",
-                                data=csv,
-                                file_name=f"{conv_title}_chat_log.csv",
-                                mime="text/csv",
-                                key=f"download_{conv.id}"
-                            )
+                            # Create columns for buttons at the bottom
+                            col1, col2 = st.columns([5,1])
+                            with col1:
+                                df = pd.DataFrame(detailed_data)
+                                csv = df.to_csv(index=False).encode('utf-8')
+                                st.download_button(
+                                    label="Download Chat Log as CSV",
+                                    data=csv,
+                                    file_name=f"{conv_title}_chat_log.csv",
+                                    mime="text/csv",
+                                    key=f"download_{conv.id}"
+                                )
+                            with col2:
+                                if st.button("Delete", key=f"delete_{conv.id}", type="secondary"):
+                                    if st.session_state.get(f'confirm_delete_{conv.id}'):
+                                        if self.delete_conversation(conv.id):
+                                            st.success("Conversation deleted successfully")
+                                            st.rerun()
+                                        st.session_state[f'confirm_delete_{conv.id}'] = False
+                                    else:
+                                        st.session_state[f'confirm_delete_{conv.id}'] = True
+                                        st.warning("Click again to confirm deletion")
                         else:
                             st.info("No messages found for this essay.")
 
