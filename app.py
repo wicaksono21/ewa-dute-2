@@ -227,13 +227,13 @@ class EWA:
         """Handle user authentication"""
         try:
             # Authenticate the user using the Firebase Client SDK
-            user = firebase.auth().sign_in_with_email_and_password(email, password)
+            user = firebase_admin.auth().sign_in_with_email_and_password(email, password)
 
             # Get the ID token from the authenticated user
             id_token = user['idToken']
 
             # Verify the ID token on the server-side using the Firebase Admin SDK
-            decoded_token = auth.verify_id_token(id_token)
+            decoded_token = firebase_admin.auth.verify_id_token(id_token)
 
             # Store the user information in the session state
             st.session_state.user = decoded_token
