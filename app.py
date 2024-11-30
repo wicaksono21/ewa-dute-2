@@ -7,7 +7,7 @@ import pytz
 
 # Import configurations
 from stageprompts import INITIAL_ASSISTANT_MESSAGE
-from reviewinstructions import SYSTEM_INSTRUCTIONS, REVIEW_INSTRUCTIONS
+from reviewinstructions import SYSTEM_INSTRUCTIONS, REVIEW_INSTRUCTIONS, REVIEW_FORMAT
 
 # Initialize Firebase
 if not firebase_admin._apps:
