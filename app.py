@@ -96,13 +96,19 @@ class EWA:
         # Build messages context
         messages = [{"role": "system", "content": SYSTEM_INSTRUCTIONS}]
         
-        # If the message contains review-related keywords, add review instructions
+        # Check for review-related keywords
         review_keywords = ["review", "assess", "grade", "evaluate", "score", "feedback"]
-        if any(keyword in prompt.lower() for keyword in review_keywords):
+        is_review = any(keyword in prompt.lower() for keyword in review_keywords)
+    
+        # Set max tokens and add review instructions if needed
+        if is_review:
+            max_tokens = 1000
             messages.append({
                 "role": "system",
                 "content": REVIEW_INSTRUCTIONS
             })
+        else:
+            max_tokens = 200
             
         # Add conversation history
         if 'messages' in st.session_state:
