@@ -8,6 +8,8 @@ class AdminDashboard:
     def __init__(self):
         self.db = firestore.client()
         self.tz = pytz.timezone("Europe/London")
+        if 'selected_conversations' not in st.session_state:
+            st.session_state.selected_conversations = set()
     
     def create_user_document(self, user):
         """Create or update user document in Firestore"""
@@ -81,6 +83,16 @@ class AdminDashboard:
             st.error(f"Error deleting user conversations: {e}")
             return False
 
+    def delete_multiple_conversations(self, conversation_ids):
+        """Delete multiple conversations"""
+        try:
+            for conv_id in conversation_ids:
+                self.delete_conversation(conv_id)
+            return True
+        except Exception as e:
+            st.error(f"Error deleting conversations: {e}")
+            return False
+
     def _batch_delete(self, collection_ref, batch_size=100):
         """Helper method to delete collection in batches"""
         docs = collection_ref.limit(batch_size).stream()
@@ -146,127 +158,147 @@ class AdminDashboard:
             selected_user = next((user for user in users if user.get('email') == selected_email), None)
             
             if selected_user:
-                # Add delete all conversations button
-                st.button("Delete All User Conversations", 
+                # Add delete all conversations button with double confirmation
+                if st.button("Delete All User Conversations", 
                          key=f"delete_all_{selected_user['id']}",
                          type="primary",
-                         use_container_width=True,
-                         on_click=lambda: self._handle_delete_all(selected_user['id']))
+                         use_container_width=True):
+                    if st.session_state.get('confirm_delete_all'):
+                        if self.delete_user_conversations(selected_user['id']):
+                            st.success("All conversations deleted successfully")
+                            st.rerun()
+                        st.session_state.confirm_delete_all = False
+                    else:
+                        st.session_state.confirm_delete_all = True
+                        st.warning("Are you sure? Click again to confirm deletion of ALL conversations.")
+
+                # Get conversations
+                conversations = list(self.db.collection('conversations')
+                                  .where('user_id', '==', selected_user['id'])
+                                  .order_by('updated_at', direction=firestore.Query.DESCENDING)
+                                  .stream())
+
+                # Batch deletion section
+                st.subheader("Batch Operations")
                 
-                if st.session_state.get('confirm_delete_all'):
-                    st.warning("Are you sure? Click 'Delete All User Conversations' again to confirm deletion.")
-                
-                conversations = self.db.collection('conversations')\
-                                .where('user_id', '==', selected_user['id'])\
-                                .order_by('updated_at', direction=firestore.Query.DESCENDING)\
-                                .stream()
-                
+                # Select All checkbox
+                if conversations:
+                    all_conv_ids = {conv.id for conv in conversations}
+                    if st.checkbox("Select All", key="select_all"):
+                        st.session_state.selected_conversations = all_conv_ids
+                    else:
+                        st.session_state.selected_conversations = set()
+
+                    # Show batch delete button if any conversations are selected
+                    if st.session_state.selected_conversations:
+                        if st.button(f"Delete Selected ({len(st.session_state.selected_conversations)})", 
+                                   type="primary",
+                                   key="delete_selected"):
+                            if self.delete_multiple_conversations(st.session_state.selected_conversations):
+                                st.success("Selected conversations deleted successfully")
+                                st.session_state.selected_conversations = set()
+                                st.rerun()
+
                 # For each conversation
                 for conv in conversations:
                     conv_data = conv.to_dict()
                     conv_title = conv_data.get('title', 'Untitled')
                     
-                    with st.expander(f"View Essay: {conv_title}", expanded=True):
-                        messages = self.db.collection('conversations').document(conv.id)\
-                                  .collection('messages')\
-                                  .order_by('timestamp')\
-                                  .stream()
-                        
-                        detailed_data = []
-                        prev_msg_time = None
-                        
-                        for msg in messages:
-                            msg_data = msg.to_dict()
-                            timestamp = msg_data.get('timestamp')
+                    # Checkbox for batch selection
+                    col1, col2 = st.columns([0.1, 0.9])
+                    with col1:
+                        if st.checkbox("", key=f"select_{conv.id}", 
+                                     value=conv.id in st.session_state.selected_conversations):
+                            st.session_state.selected_conversations.add(conv.id)
+                        else:
+                            st.session_state.selected_conversations.discard(conv.id)
+                    
+                    with col2:
+                        with st.expander(f"View Essay: {conv_title}", expanded=True):
+                            messages = self.db.collection('conversations').document(conv.id)\
+                                      .collection('messages')\
+                                      .order_by('timestamp')\
+                                      .stream()
                             
-                            if timestamp:
-                                date = timestamp.astimezone(self.tz).strftime('%Y-%m-%d')
-                                time = timestamp.astimezone(self.tz).strftime('%H:%M:%S')
+                            detailed_data = []
+                            prev_msg_time = None
+                            
+                            for msg in messages:
+                                msg_data = msg.to_dict()
+                                timestamp = msg_data.get('timestamp')
                                 
-                                if prev_msg_time:
-                                    curr_seconds = int(time.split(':')[0]) * 3600 + \
-                                                 int(time.split(':')[1]) * 60 + \
-                                                 int(time.split(':')[2])
-                                    prev_seconds = int(prev_msg_time.split(':')[0]) * 3600 + \
-                                                 int(prev_msg_time.split(':')[1]) * 60 + \
-                                                 int(prev_msg_time.split(':')[2])
-                                    response_time = curr_seconds - prev_seconds
+                                if timestamp:
+                                    date = timestamp.astimezone(self.tz).strftime('%Y-%m-%d')
+                                    time = timestamp.astimezone(self.tz).strftime('%H:%M:%S')
+                                    
+                                    if prev_msg_time:
+                                        curr_seconds = int(time.split(':')[0]) * 3600 + \
+                                                     int(time.split(':')[1]) * 60 + \
+                                                     int(time.split(':')[2])
+                                        prev_seconds = int(prev_msg_time.split(':')[0]) * 3600 + \
+                                                     int(prev_msg_time.split(':')[1]) * 60 + \
+                                                     int(prev_msg_time.split(':')[2])
+                                        response_time = curr_seconds - prev_seconds
+                                    else:
+                                        response_time = 'N/A'
+                                        
+                                    prev_msg_time = time
                                 else:
+                                    date = 'N/A'
+                                    time = 'N/A'
                                     response_time = 'N/A'
                                     
-                                prev_msg_time = time
-                            else:
-                                date = 'N/A'
-                                time = 'N/A'
-                                response_time = 'N/A'
+                                content = msg_data.get('content', '')
+                                word_count = len(content.split()) if content else 0
                                 
-                            content = msg_data.get('content', '')
-                            word_count = len(content.split()) if content else 0
+                                detailed_data.append({
+                                    'date': date,
+                                    'time': time,
+                                    'role': msg_data.get('role', 'N/A'),
+                                    'content': content,
+                                    'length': word_count,
+                                    'response_time': response_time
+                                })
                             
-                            detailed_data.append({
-                                'date': date,
-                                'time': time,
-                                'role': msg_data.get('role', 'N/A'),
-                                'content': content,
-                                'length': word_count,
-                                'response_time': response_time
-                            })
-                        
-                        if detailed_data:
-                            st.dataframe(
-                                detailed_data,
-                                column_config={
-                                    "date": "Date",
-                                    "time": "Time",
-                                    "role": "Role",
-                                    "content": "Content",
-                                    "length": st.column_config.NumberColumn(
-                                        "Length",
-                                        help="Number of words"
-                                    ),
-                                    "response_time": st.column_config.NumberColumn(
-                                        "Response Time (s)",
-                                        help="Time since previous message in seconds"
-                                    )
-                                },
-                                hide_index=True,
-                                key=f"dataframe_{conv.id}"
-                            )
-                            
-                            # Create columns for buttons at the bottom
-                            col1, col2 = st.columns([5,1])
-                            with col1:
-                                df = pd.DataFrame(detailed_data)
-                                csv = df.to_csv(index=False).encode('utf-8')
-                                st.download_button(
-                                    label="Download Chat Log as CSV",
-                                    data=csv,
-                                    file_name=f"{conv_title}_chat_log.csv",
-                                    mime="text/csv",
-                                    key=f"download_{conv.id}"
+                            if detailed_data:
+                                st.dataframe(
+                                    detailed_data,
+                                    column_config={
+                                        "date": "Date",
+                                        "time": "Time",
+                                        "role": "Role",
+                                        "content": "Content",
+                                        "length": st.column_config.NumberColumn(
+                                            "Length",
+                                            help="Number of words"
+                                        ),
+                                        "response_time": st.column_config.NumberColumn(
+                                            "Response Time (s)",
+                                            help="Time since previous message in seconds"
+                                        )
+                                    },
+                                    hide_index=True,
+                                    key=f"dataframe_{conv.id}"
                                 )
-                            with col2:
-                                if st.button("Delete", key=f"delete_{conv.id}", type="secondary"):
-                                    if st.session_state.get(f'confirm_delete_{conv.id}'):
+                                
+                                # Create columns for buttons at the bottom
+                                col1, col2 = st.columns([5,1])
+                                with col1:
+                                    df = pd.DataFrame(detailed_data)
+                                    csv = df.to_csv(index=False).encode('utf-8')
+                                    st.download_button(
+                                        label="Download Chat Log as CSV",
+                                        data=csv,
+                                        file_name=f"{conv_title}_chat_log.csv",
+                                        mime="text/csv",
+                                        key=f"download_{conv.id}"
+                                    )
+                                with col2:
+                                    if st.button("Delete", key=f"delete_{conv.id}", type="primary"):
                                         if self.delete_conversation(conv.id):
-                                            st.success("Conversation deleted successfully")
                                             st.rerun()
-                                        st.session_state[f'confirm_delete_{conv.id}'] = False
-                                    else:
-                                        st.session_state[f'confirm_delete_{conv.id}'] = True
-                                        st.warning("Click again to confirm deletion")
-                        else:
-                            st.info("No messages found for this essay.")
-
-    def _handle_delete_all(self, user_id):
-        """Helper method to handle delete all confirmation"""
-        if st.session_state.get('confirm_delete_all'):
-            if self.delete_user_conversations(user_id):
-                st.success("All conversations deleted successfully")
-                st.rerun()
-            st.session_state.confirm_delete_all = False
-        else:
-            st.session_state.confirm_delete_all = True
+                            else:
+                                st.info("No messages found for this essay.")
 
 def main():
     st.set_page_config(
