@@ -28,16 +28,13 @@ class AdminDashboard:
     def sync_users(self):
         """Sync Authentication users with Firestore users collection"""
         try:
-            # Get all users from Authentication
             auth_users = auth.list_users().iterate_all()
             synced_count = 0
             
             for auth_user in auth_users:
-                # Check if user document exists in Firestore
                 user_doc = self.db.collection('users').document(auth_user.uid).get()
                 
                 if not user_doc.exists:
-                    # Create user document if it doesn't exist
                     self.create_user_document(auth_user)
                     synced_count += 1
             
@@ -75,7 +72,6 @@ class AdminDashboard:
     def delete_user_conversations(self, user_id):
         """Delete all conversations for a specific user"""
         try:
-            # Get all conversations for the user
             conversations = self.db.collection('conversations').where('user_id', '==', user_id).stream()
             
             for conv in conversations:
@@ -150,22 +146,15 @@ class AdminDashboard:
             selected_user = next((user for user in users if user.get('email') == selected_email), None)
             
             if selected_user:
-                # Add delete all conversations button with confirmation
-                col1, col2 = st.columns([4,1])
-                with col1:
-                    st.markdown(f"**User: {selected_email}**")
-                with col2:
-                    if st.button("Delete All", 
-                               key=f"delete_all_{selected_user['id']}",
-                               type="primary"):
-                        if st.session_state.get('confirm_delete_all'):
-                            if self.delete_user_conversations(selected_user['id']):
-                                st.success("All conversations deleted successfully")
-                                st.rerun()
-                            st.session_state.confirm_delete_all = False
-                        else:
-                            st.session_state.confirm_delete_all = True
-                            st.warning("Are you sure? Click again to confirm deletion.")
+                # Add delete all conversations button
+                st.button("Delete All User Conversations", 
+                         key=f"delete_all_{selected_user['id']}",
+                         type="primary",
+                         use_container_width=True,
+                         on_click=lambda: self._handle_delete_all(selected_user['id']))
+                
+                if st.session_state.get('confirm_delete_all'):
+                    st.warning("Are you sure? Click 'Delete All User Conversations' again to confirm deletion.")
                 
                 conversations = self.db.collection('conversations')\
                                 .where('user_id', '==', selected_user['id'])\
@@ -177,22 +166,22 @@ class AdminDashboard:
                     conv_data = conv.to_dict()
                     conv_title = conv_data.get('title', 'Untitled')
                     
-                    # Create columns for title and delete button
-                    col1, col2 = st.columns([5,1])
-                    with col1:
-                        expander = st.expander(f"View Essay: {conv_title}", expanded=True)
-                    with col2:
-                        if st.button("Delete", key=f"delete_{conv.id}"):
-                            if st.session_state.get(f'confirm_delete_{conv.id}'):
-                                if self.delete_conversation(conv.id):
-                                    st.success("Conversation deleted successfully")
-                                    st.rerun()
-                                st.session_state[f'confirm_delete_{conv.id}'] = False
-                            else:
-                                st.session_state[f'confirm_delete_{conv.id}'] = True
-                                st.warning("Click again to confirm deletion")
-                    
-                    with expander:
+                    with st.expander(f"View Essay: {conv_title}", expanded=True):
+                        # Add delete button inside expander
+                        col1, col2 = st.columns([5,1])
+                        with col2:
+                            if st.button("Delete Conversation", key=f"delete_{conv.id}", type="secondary"):
+                                if st.session_state.get(f'confirm_delete_{conv.id}'):
+                                    if self.delete_conversation(conv.id):
+                                        st.success("Conversation deleted successfully")
+                                        st.rerun()
+                                    st.session_state[f'confirm_delete_{conv.id}'] = False
+                                else:
+                                    st.session_state[f'confirm_delete_{conv.id}'] = True
+                                    st.warning("Click again to confirm deletion")
+                        
+                        st.divider()
+                        
                         messages = self.db.collection('conversations').document(conv.id)\
                                   .collection('messages')\
                                   .order_by('timestamp')\
@@ -209,7 +198,6 @@ class AdminDashboard:
                                 date = timestamp.astimezone(self.tz).strftime('%Y-%m-%d')
                                 time = timestamp.astimezone(self.tz).strftime('%H:%M:%S')
                                 
-                                # Calculate response time for all messages
                                 if prev_msg_time:
                                     curr_seconds = int(time.split(':')[0]) * 3600 + \
                                                  int(time.split(':')[1]) * 60 + \
@@ -272,6 +260,16 @@ class AdminDashboard:
                             )
                         else:
                             st.info("No messages found for this essay.")
+
+    def _handle_delete_all(self, user_id):
+        """Helper method to handle delete all confirmation"""
+        if st.session_state.get('confirm_delete_all'):
+            if self.delete_user_conversations(user_id):
+                st.success("All conversations deleted successfully")
+                st.rerun()
+            st.session_state.confirm_delete_all = False
+        else:
+            st.session_state.confirm_delete_all = True
 
 def main():
     st.set_page_config(
