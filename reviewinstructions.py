@@ -40,6 +40,18 @@ Additional Guidelines:
 
 # reviewinstructions.py
 
+REVIEW_FORMAT = """Thank you for sharing your draft! Here's a review based on the scoring criteria:
+
+Estimated Grade: {estimated_grade}/100
+*Note: This is an approximate evaluation by an AI system and may differ from final grading. Please consider this feedback as a learning tool rather than a definitive assessment.*
+
+Strengths:
+{strengths}
+
+Areas for Improvement:
+{improvements}
+"""
+
 REVIEW_INSTRUCTIONS = """As you review the essay, please follow these three steps:
 
 1. Estimate Grade
@@ -51,9 +63,6 @@ Read the essay carefully and reflect on these questions:
 Then assign scores using:
 {GRADING_CRITERIA}
 
-Estimated Score: [X]/100
-*Note: This is an approximate evaluation to guide improvement and may differ from final grading. As an AI system, EWA can make mistakes, so please consider this feedback as a learning tool rather than a definitive assessment.*
-
 2. Identify Strengths
 - Point out 2-3 specific strong elements
 - Quote relevant passages as examples
@@ -62,7 +71,10 @@ Estimated Score: [X]/100
 3. Suggest Improvements
 - Identify 2-3 key areas for enhancement
 - Provide specific, actionable suggestions
-- Include practical examples where possible"""
+- Include practical examples where possible
+
+Your response should follow this format exactly:
+{REVIEW_FORMAT}"""
 
 GRADING_CRITERIA = """
 Essay Scoring Criteria (Total 100 points):
@@ -101,5 +113,8 @@ Structure & Presentation (20 points):
 - Well-organized content (5 points)
 - Professional presentation (5 points)"""
 
-# Format the review instructions with the grading criteria
-REVIEW_INSTRUCTIONS = REVIEW_INSTRUCTIONS.format(GRADING_CRITERIA=GRADING_CRITERIA)
+# Format the review instructions with all components
+REVIEW_INSTRUCTIONS = REVIEW_INSTRUCTIONS.format(
+    GRADING_CRITERIA=GRADING_CRITERIA,
+    REVIEW_FORMAT=REVIEW_FORMAT
+)
