@@ -49,10 +49,6 @@ Read the essay carefully and reflect on these questions:
 Then assign scores using:
 {GRADING_CRITERIA}
 
-When giving your assessment, start with EXACTLY these two lines:
-Estimated Grade: [X]/100
-*Note: This is an approximate AI evaluation for learning purposes only. The final grade may differ.*
-
 2. Identify Strengths
 - Point out 2-3 specific strong elements
 - Quote relevant passages as examples
