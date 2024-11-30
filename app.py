@@ -77,7 +77,7 @@ class EWA:
                 st.session_state.page = 0
                 st.rerun()
             
-            if st.button("Latest"):
+            if st.button("Latest Chat History"):
                 st.session_state.page = 0
                 st.rerun()
             
