@@ -51,6 +51,9 @@ Read the essay carefully and reflect on these questions:
 Then assign scores using:
 {GRADING_CRITERIA}
 
+Estimated Score: [X]/100
+*Note: This is an approximate evaluation to guide improvement and may differ from final grading. As an AI system, EWA can make mistakes, so please consider this feedback as a learning tool rather than a definitive assessment.*
+
 2. Identify Strengths
 - Point out 2-3 specific strong elements
 - Quote relevant passages as examples
