@@ -47,6 +47,7 @@ class AdminDashboard:
             return 0
             
     def check_admin_access(self, email):
+        """Check if user has admin privileges"""
         try:
             user_ref = self.db.collection('users').where('email', '==', email).limit(1).get()
             if not user_ref:
@@ -56,6 +57,45 @@ class AdminDashboard:
         except Exception as e:
             st.error(f"Error checking admin access: {e}")
             return False
+    
+    def delete_conversation(self, conversation_id):
+        """Delete a single conversation and all its messages"""
+        try:
+            # Delete all messages in the conversation
+            messages_ref = self.db.collection('conversations').document(conversation_id).collection('messages')
+            self._batch_delete(messages_ref)
+            
+            # Delete the conversation document
+            self.db.collection('conversations').document(conversation_id).delete()
+            return True
+        except Exception as e:
+            st.error(f"Error deleting conversation: {e}")
+            return False
+
+    def delete_user_conversations(self, user_id):
+        """Delete all conversations for a specific user"""
+        try:
+            # Get all conversations for the user
+            conversations = self.db.collection('conversations').where('user_id', '==', user_id).stream()
+            
+            for conv in conversations:
+                self.delete_conversation(conv.id)
+            return True
+        except Exception as e:
+            st.error(f"Error deleting user conversations: {e}")
+            return False
+
+    def _batch_delete(self, collection_ref, batch_size=100):
+        """Helper method to delete collection in batches"""
+        docs = collection_ref.limit(batch_size).stream()
+        deleted = 0
+
+        for doc in docs:
+            doc.reference.delete()
+            deleted += 1
+
+        if deleted >= batch_size:
+            return self._batch_delete(collection_ref, batch_size)
     
     def render_dashboard(self):
         st.title("Admin Dashboard")
@@ -72,7 +112,6 @@ class AdminDashboard:
         users_count = len(list(self.db.collection('users').get()))
         convs = list(self.db.collection('conversations').get())
         convs_count = len(convs)
-        
         
         # Display metrics
         col1, col2 = st.columns(2)
@@ -111,6 +150,23 @@ class AdminDashboard:
             selected_user = next((user for user in users if user.get('email') == selected_email), None)
             
             if selected_user:
+                # Add delete all conversations button with confirmation
+                col1, col2 = st.columns([4,1])
+                with col1:
+                    st.markdown(f"**User: {selected_email}**")
+                with col2:
+                    if st.button("Delete All", 
+                               key=f"delete_all_{selected_user['id']}",
+                               type="primary"):
+                        if st.session_state.get('confirm_delete_all'):
+                            if self.delete_user_conversations(selected_user['id']):
+                                st.success("All conversations deleted successfully")
+                                st.rerun()
+                            st.session_state.confirm_delete_all = False
+                        else:
+                            st.session_state.confirm_delete_all = True
+                            st.warning("Are you sure? Click again to confirm deletion.")
+                
                 conversations = self.db.collection('conversations')\
                                 .where('user_id', '==', selected_user['id'])\
                                 .order_by('updated_at', direction=firestore.Query.DESCENDING)\
@@ -121,8 +177,22 @@ class AdminDashboard:
                     conv_data = conv.to_dict()
                     conv_title = conv_data.get('title', 'Untitled')
                     
-                    # Add expandable section for each conversation
-                    with st.expander(f"View Essay: {conv_title}", expanded=True):
+                    # Create columns for title and delete button
+                    col1, col2 = st.columns([5,1])
+                    with col1:
+                        expander = st.expander(f"View Essay: {conv_title}", expanded=True)
+                    with col2:
+                        if st.button("Delete", key=f"delete_{conv.id}"):
+                            if st.session_state.get(f'confirm_delete_{conv.id}'):
+                                if self.delete_conversation(conv.id):
+                                    st.success("Conversation deleted successfully")
+                                    st.rerun()
+                                st.session_state[f'confirm_delete_{conv.id}'] = False
+                            else:
+                                st.session_state[f'confirm_delete_{conv.id}'] = True
+                                st.warning("Click again to confirm deletion")
+                    
+                    with expander:
                         messages = self.db.collection('conversations').document(conv.id)\
                                   .collection('messages')\
                                   .order_by('timestamp')\
@@ -187,10 +257,10 @@ class AdminDashboard:
                                     )
                                 },
                                 hide_index=True,
-                                key=f"dataframe_{conv.id}"  # Added unique key for dataframe
+                                key=f"dataframe_{conv.id}"
                             )
                             
-                            # Add download button for CSV with unique key
+                            # Add download button for CSV
                             df = pd.DataFrame(detailed_data)
                             csv = df.to_csv(index=False).encode('utf-8')
                             st.download_button(
@@ -198,7 +268,7 @@ class AdminDashboard:
                                 data=csv,
                                 file_name=f"{conv_title}_chat_log.csv",
                                 mime="text/csv",
-                                key=f"download_{conv.id}"  # Unique key for each download button
+                                key=f"download_{conv.id}"
                             )
                         else:
                             st.info("No messages found for this essay.")
