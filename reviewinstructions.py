@@ -38,6 +38,12 @@ Additional Guidelines:
     • Help balance personal insights with research    
 """
 
+# Define the disclaimer as a separate string
+SCORE_DISCLAIMER = """
+*Note: This is an approximate evaluation by an AI system and may differ from final grading. Please consider this feedback as a learning tool rather than a definitive assessment.*
+"""
+
+# Main review instructions
 REVIEW_INSTRUCTIONS = """As you review the essay, please follow these three steps:
 
 1. Estimate Grade
@@ -48,6 +54,9 @@ Read the essay carefully and reflect on these questions:
 
 Then assign scores using:
 {GRADING_CRITERIA}
+
+After providing the total score, always include this note:
+{SCORE_DISCLAIMER}
 
 2. Identify Strengths
 - Point out 2-3 specific strong elements
@@ -96,5 +105,8 @@ Structure & Presentation (20 points):
 - Well-organized content (5 points)
 - Professional presentation (5 points)"""
 
-# Format the review instructions with the grading criteria
-REVIEW_INSTRUCTIONS = REVIEW_INSTRUCTIONS.format(GRADING_CRITERIA=GRADING_CRITERIA)
+# Format the review instructions with both grading criteria and disclaimer
+REVIEW_INSTRUCTIONS = REVIEW_INSTRUCTIONS.format(
+    GRADING_CRITERIA=GRADING_CRITERIA,
+    SCORE_DISCLAIMER=SCORE_DISCLAIMER
+)
