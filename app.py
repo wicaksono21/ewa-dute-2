@@ -224,18 +224,22 @@ class EWA:
             return conversation_id
 
     def login(self, email, password):
-        """Handle user authentication"""
+        """Handle user login and update last login timestamp"""
         try:
             user = auth.get_user_by_email(email)
+            # Update last login time in Firestore
+            self.db.collection('users').document(user.uid).update({
+                'last_login': firestore.SERVER_TIMESTAMP
+            })
             st.session_state.user = user
             st.session_state.logged_in = True
-            st.session_state.messages = []
-            # Add initial message with timestamp
-            initial_msg = {**INITIAL_ASSISTANT_MESSAGE, "timestamp": self.format_time()}
-            st.session_state.messages.append(initial_msg)
+            st.session_state.messages = [{
+                **INITIAL_ASSISTANT_MESSAGE,
+                "timestamp": self.format_time()
+            }]
             return True
         except Exception as e:
-            st.error(f"Login failed: {str(e)}")
+            st.error("Login failed")
             return False
 
 def main():
