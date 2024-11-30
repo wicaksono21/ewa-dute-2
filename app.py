@@ -124,30 +124,30 @@ class EWA:
                 if st.button(title, 
                         key=conv.id,
                         use_container_width=True):
-                messages = db.collection('conversations').document(conv.id)\
+                    messages = db.collection('conversations').document(conv.id)\
                           .collection('messages').order_by('timestamp').stream()
-                st.session_state.messages = []
-                for msg in messages:
-                    msg_dict = msg.to_dict()
-                    if 'timestamp' in msg_dict:
-                        msg_dict['timestamp'] = self.format_time(msg_dict['timestamp'])
+                    st.session_state.messages = []
+                    for msg in messages:
+                        msg_dict = msg.to_dict()
+                        if 'timestamp' in msg_dict:
+                            msg_dict['timestamp'] = self.format_time(msg_dict['timestamp'])
                     st.session_state.messages.append(msg_dict)
                 st.session_state.current_conversation_id = conv.id
                 st.rerun()
         
-        # Pagination controls at bottom with more compact layout
-        if st.session_state.page > 0 or has_more:
-            nav_cols = st.columns([1, 1])
-            with nav_cols[0]:
-                if st.session_state.page > 0:
-                    if st.button("← Previous", use_container_width=True, key="prev_btn"):
-                        st.session_state.page -= 1
-                        st.rerun()
-            with nav_cols[1]:
-                if has_more:
-                    if st.button("Next →", use_container_width=True, key="next_btn"):
-                        st.session_state.page += 1
-                        st.rerun()
+            # Pagination controls at bottom with more compact layout
+            if st.session_state.page > 0 or has_more:
+                nav_cols = st.columns([1, 1])
+                with nav_cols[0]:
+                    if st.session_state.page > 0:
+                        if st.button("← Previous", use_container_width=True, key="prev_btn"):
+                            st.session_state.page -= 1
+                            st.rerun()
+                with nav_cols[1]:
+                    if has_more:
+                        if st.button("Next →", use_container_width=True, key="next_btn"):
+                            st.session_state.page += 1
+                            st.rerun()
 
     def handle_chat(self, prompt):
         """Process chat messages and manage conversation flow"""
