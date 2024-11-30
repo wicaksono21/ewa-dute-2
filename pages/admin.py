@@ -30,6 +30,17 @@ class AdminDashboard:
             st.session_state.selected_conversations = all_ids
         st.session_state.show_batch_delete = len(st.session_state.selected_conversations) > 0
 
+    def update_last_login(self, user_id):
+        """Update user's last login timestamp"""
+        try:
+            self.db.collection('users').document(user_id).update({
+                'last_login': firestore.SERVER_TIMESTAMP
+            })
+            return True
+        except Exception as e:
+            st.error(f"Error updating last login: {e}")
+            return False
+
     def create_user_document(self, user):
         """Create or update user document in Firestore"""
         try:
@@ -146,12 +157,13 @@ class AdminDashboard:
         users_ref = self.db.collection('users').stream()
         users = [{"id": doc.id, **doc.to_dict()} for doc in users_ref]
         
-        # Create user table
+        # Create user table with proper timezone handling
         st.table({
             'Email': [user.get('email', 'N/A') for user in users],
             'Role': [user.get('role', 'N/A') for user in users],
             'Last Login': [
-                user.get('last_login').astimezone(self.tz).strftime("%Y-%m-%d %H:%M:%S") 
+                user.get('last_login', firestore.SERVER_TIMESTAMP).astimezone(pytz.UTC)
+                .astimezone(self.tz).strftime("%Y-%m-%d %H:%M:%S")
                 if user.get('last_login') else 'N/A' 
                 for user in users
             ]
@@ -198,29 +210,26 @@ class AdminDashboard:
                         <div style='position: fixed; top: 0; right: 0; padding: 1rem; 
                         background-color: #262730; z-index: 1000; border-radius: 0.5rem; 
                         margin: 1rem; box-shadow: 0 0 10px rgba(0,0,0,0.5);'>
-                            <p>Selected: {len(st.session_state.selected_conversations)}</p>
+                            <p style='color: white; margin: 0;'>Selected: {len(st.session_state.selected_conversations)}</p>
                         </div>
                         """,
                         unsafe_allow_html=True
                     )
-                    if st.button(
+                    st.button(
                         f"🗑️ Delete Selected ({len(st.session_state.selected_conversations)})", 
                         type="primary",
-                        key="batch_delete"
-                    ):
-                        if self.delete_multiple_conversations(st.session_state.selected_conversations):
-                            st.session_state.selected_conversations = set()
-                            st.session_state.show_batch_delete = False
-                            st.rerun()
+                        key="batch_delete",
+                        on_click=lambda: self.delete_multiple_conversations(st.session_state.selected_conversations) 
+                        and st.rerun()
+                    )
 
                 # Select All checkbox
                 if conversations:
-                    if st.checkbox("Select All", 
-                                 value=len(st.session_state.selected_conversations) == len(conversations),
-                                 on_change=self.handle_select_all,
-                                 args=(conversations,),
-                                 key="select_all"):
-                        pass  # Selection handled in on_change callback
+                    st.checkbox("Select All", 
+                              value=len(st.session_state.selected_conversations) == len(conversations),
+                              on_change=self.handle_select_all,
+                              args=(conversations,),
+                              key="select_all")
 
                 # For each conversation
                 for conv in conversations:
