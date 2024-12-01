@@ -1,7 +1,6 @@
 import streamlit as st
 import firebase_admin
 from firebase_admin import credentials, auth, firestore
-from firebase import firebase
 from openai import OpenAI
 from datetime import datetime
 import pytz
