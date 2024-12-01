@@ -37,6 +37,44 @@ Additional Guidelines:
     • Help balance personal insights with research    
 """
 
+GRADING_CRITERIA = """
+Essay Scoring Criteria (Total 100 points):
+
+Understanding & Analysis (40 points):
+- Topic Understanding (15 points)
+  • Shows deep understanding of main issues
+  • Breaks down complex ideas clearly
+  • Goes beyond basic descriptions
+- Literature Review (15 points)
+  • Uses relevant sources effectively
+  • Shows critical evaluation of sources
+  • Connects source material to own arguments
+- Creative Thinking (10 points)
+  • Combines ideas in original ways
+  • Develops new perspectives
+  • Shows independent thinking
+
+Research Approach (40 points):
+- Method & Planning (10 points)
+  • Uses appropriate research methods
+  • Shows clear connection to course themes
+  • Justifies chosen approach
+- Analysis & Insight (15 points)
+  • Shows clear understanding of arguments
+  • Develops own interpretations
+  • Creates meaningful insights
+- Evidence & Support (15 points)
+  • Backs up claims with evidence
+  • Explains research methods clearly
+  • Discusses limitations and validity
+
+Structure & Presentation (20 points):
+- Clear logical flow (5 points)
+- Strong conclusions (5 points)
+- Well-organized content (5 points)
+- Professional presentation (5 points)"""
+
+
 SCORING_DISCLAIMER = """
 *Note: This is an approximate evaluation by an AI system and may differ from final grading. Please consider this feedback as a learning tool rather than a definitive assessment.*
 """
@@ -74,39 +112,3 @@ Remember to:
 
 {SCORING_DISCLAIMER}"""
 
-GRADING_CRITERIA = """
-Essay Scoring Criteria (Total 100 points):
-
-Understanding & Analysis (40 points):
-- Topic Understanding (15 points)
-  • Shows deep understanding of main issues
-  • Breaks down complex ideas clearly
-  • Goes beyond basic descriptions
-- Literature Review (15 points)
-  • Uses relevant sources effectively
-  • Shows critical evaluation of sources
-  • Connects source material to own arguments
-- Creative Thinking (10 points)
-  • Combines ideas in original ways
-  • Develops new perspectives
-  • Shows independent thinking
-
-Research Approach (40 points):
-- Method & Planning (10 points)
-  • Uses appropriate research methods
-  • Shows clear connection to course themes
-  • Justifies chosen approach
-- Analysis & Insight (15 points)
-  • Shows clear understanding of arguments
-  • Develops own interpretations
-  • Creates meaningful insights
-- Evidence & Support (15 points)
-  • Backs up claims with evidence
-  • Explains research methods clearly
-  • Discusses limitations and validity
-
-Structure & Presentation (20 points):
-- Clear logical flow (5 points)
-- Strong conclusions (5 points)
-- Well-organized content (5 points)
-- Professional presentation (5 points)"""
