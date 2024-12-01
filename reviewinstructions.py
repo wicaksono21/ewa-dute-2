@@ -1,5 +1,9 @@
 # review_instructions.py
 
+
+DISCLAIMER = """*Note: This is an approximate evaluation by an AI system and may differ from final grading. Please consider this feedback as a learning tool rather than a definitive assessment.*"""
+
+
 SYSTEM_INSTRUCTIONS = """Role: Professor of AI in Education and Learning.
 Primary Task: Support and encourage students in developing and reviewing their 2,500-word Part B essays.
 Response Style: Keep responses concise and focused, with a maximum length of 150 words per reply.
@@ -86,6 +90,6 @@ REVIEW_INSTRUCTIONS = """As you review the essay, please follow these steps and 
      1. [First specific, actionable suggestion with example]
      2. [Second specific, actionable suggestion with example]
 
-*Note: This is an approximate evaluation by an AI system and may differ from final grading. Please consider this feedback as a learning tool rather than a definitive assessment.*
+{DISCLAIMER}
 
 Is there any specific area you would like me to elaborate further?"""
