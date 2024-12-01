@@ -225,29 +225,25 @@ class EWA:
             return conversation_id
 
     def login(self, email, password):
-        """Handle user authentication"""
+        """Simple login check"""
         try:
-            # Authenticate the user using the Firebase Client SDK
-            user = auth.sign_in_with_email_and_password(email, password)
-
-            # Get the ID token from the authenticated user
-            id_token = user['idToken']
-
-            # Verify the ID token on the server-side using the Firebase Admin SDK
-            decoded_token = auth.verify_id_token(id_token)
-
-            # Store the user information in the session state
-            st.session_state.user = decoded_token
+            # Just check if user exists
+            user = auth.get_user_by_email(email)
+            st.session_state.user = user
             st.session_state.logged_in = True
-            st.session_state.messages = []
-
-            # Add initial message with timestamp
-            initial_msg = {**INITIAL_ASSISTANT_MESSAGE, "timestamp": self.format_time()}
-            st.session_state.messages.append(initial_msg)
-
+            st.session_state.messages = [{
+                **INITIAL_ASSISTANT_MESSAGE,
+                "timestamp": self.format_time()
+            }]
+            
+            # Update last login
+            self.db.collection('users').document(user.uid).update({
+                'last_login': firestore.SERVER_TIMESTAMP
+            })
             return True
         except Exception as e:
-            st.error(f"Login failed: {str(e)}")
+            print(f"Login error: {str(e)}")  # Add this for debugging
+            st.error("Login failed")
             return False
 
 
