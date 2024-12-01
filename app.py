@@ -242,14 +242,19 @@ class EWA:
                 raise Exception("Authentication failed")
             
             # Get user details
-            user = auth.get_user_by_email(email)
-
-            # Add this one line to update last login
-            self.db.collection('users').document(user.uid).update({'last_login': firestore.SERVER_TIMESTAMP})
-            
+            user = auth.get_user_by_email(email)           
             st.session_state.user = user
             st.session_state.logged_in = True 
-            st.session_state.messages = []            
+            st.session_state.messages = []
+
+            # Try to update last login separately to avoid blocking the login process
+            try:
+                self.db.collection('users').document(user.uid).update({
+                    'last_login': firestore.SERVER_TIMESTAMP
+                })
+            except:
+                pass  # Don't let last_login update failure prevent login
+                
             # Add initial message with timestamp
             initial_msg = {**INITIAL_ASSISTANT_MESSAGE, "timestamp": self.format_time()}
             st.session_state.messages.append(initial_msg)
