@@ -27,8 +27,7 @@ Instructions:
 3. Drafting Support (by section):
     • Introduction guidance
     • Body paragraph development
-    • Conclusion strengthening
-    • Support source integration
+    • Conclusion strengthening    • 
 
 4. Review and Feedback : {REVIEW_INSTRUCTIONS}
 
@@ -46,27 +45,22 @@ SCORE_DISCLAIMER = """
 # Main review instructions
 REVIEW_INSTRUCTIONS = """As you review the essay, please follow these three steps:
 
-1. Estimate Grade
-Read the essay carefully and reflect on these questions:
-- What is the main argument and how well is it developed?
-- How strong is the evidence and analysis?
-- How clear is the organization and presentation?
+1. Review and Score
+Read essay thoroughly
+Evaluate against {GRADING_CRITERIA}
+Assign scores for each category
+Include {SCORING_DISCLAIMER}
 
-Then assign scores using:
-{GRADING_CRITERIA}
+2. Feedback Format
+Strengths: Two key strengths per major category with examples
+Improvements: Two specific suggestions per major category
+Keep feedback constructive and actionable
 
-After providing the total score, always include this note:
-{SCORE_DISCLAIMER}
-
-2. Identify Strengths
-- Point out 2-3 specific strong elements
-- Quote relevant passages as examples
-- Explain why these are effective
-
-3. Suggest Improvements
-- Identify 2-3 key areas for enhancement
-- Provide specific, actionable suggestions
-- Include practical examples where possible"""
+3. Guidelines
+Support all feedback with specific examples
+Maintain constructive tone
+Focus on most impactful improvements
+Guide next steps"""
 
 GRADING_CRITERIA = """
 Essay Scoring Criteria (Total 100 points):
