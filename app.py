@@ -8,7 +8,7 @@ import requests
 
 # Import configurations
 from stageprompts import INITIAL_ASSISTANT_MESSAGE
-from reviewinstructions import SYSTEM_INSTRUCTIONS, REVIEW_INSTRUCTIONS
+from reviewinstructions import SYSTEM_INSTRUCTIONS, REVIEW_INSTRUCTIONS, DISCLAIMER
 
 # Initialize Firebase
 if not firebase_admin._apps:
@@ -162,7 +162,12 @@ class EWA:
                 max_tokens=max_tokens
             )
 
-            assistant_content = response.choices[0].message.content      
+            assistant_content = response.choices[0].message.content
+            
+            # Add disclaimer for review responses
+            if is_review:
+                assistant_content = f"{assistant_content}\n\n{DISCLAIMER}"
+                
             st.chat_message("assistant").write(f"{time_str} {assistant_content}")
 
             # Update session state
