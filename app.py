@@ -105,7 +105,7 @@ class EWA:
                         st.session_state.messages.append(msg_dict)
                     st.session_state.current_conversation_id = conv.id
                     st.rerun()
-        
+            
             # Simple pagination controls
             cols = st.columns(2)
             with cols[0]:
@@ -135,33 +135,38 @@ class EWA:
         
         # Check for review/scoring related keywords
         review_keywords = ["review", "assess", "grade", "evaluate", "score", "feedback"]
-        if any(keyword in prompt.lower() for keyword in review_keywords):
+        is_review = any(keyword in prompt.lower() for keyword in review_keywords)
+    
+        if is_review:
             messages.append({
                 "role": "system",
                 "content": REVIEW_INSTRUCTIONS
-            })
-            max_tokens = 1000
-        else:
-            max_tokens = 200
-            
-        # Add conversation history
-        if 'messages' in st.session_state:
-            messages.extend(st.session_state.messages)
+        })
+        # Add specific instruction to always include disclaimer
+        messages.append({
+            "role": "system",
+            "content": "Always end your review with the evaluation disclaimer and ask if any areas need elaboration."
+        })
+        max_tokens = 1000
+    else:
+        max_tokens = 200
 
-        # Add current prompt
-        messages.append({"role": "user", "content": prompt})
+    try:
+        # Get AI response
+        response = OpenAI(api_key=st.secrets["default"]["OPENAI_API_KEY"]).chat.completions.create(
+            model="gpt-4o-mini",
+            messages=messages,
+            temperature=0,
+            max_tokens=max_tokens
+        )
 
-        try:
-            # Get AI response
-            response = OpenAI(api_key=st.secrets["default"]["OPENAI_API_KEY"]).chat.completions.create(
-                model="gpt-4o-mini",
-                messages=messages,
-                temperature=0,
-                max_tokens=1000
-            )
+        assistant_content = response.choices[0].message.content
+        
+        # Ensure disclaimer for review responses
+        if is_review and "Note: This is an approximate evaluation" not in assistant_content:
+            assistant_content += "\n\nIs there any specific area you would like me to elaborate further?\n\n*Note: This is an approximate evaluation by an AI system and may differ from final grading. Please consider this feedback as a learning tool rather than a definitive assessment.*"
 
-            assistant_content = response.choices[0].message.content
-            st.chat_message("assistant").write(f"{time_str} {assistant_content}")
+        st.chat_message("assistant").write(f"{time_str} {assistant_content}")
 
             # Update session state
             if 'messages' not in st.session_state:
