@@ -131,7 +131,7 @@ class EWA:
         st.chat_message("user").write(f"{time_str} {prompt}")
 
         # Build messages context
-        messages = [{"role": "assistant", "content": SYSTEM_INSTRUCTIONS}]
+        messages = [{"role": "system", "content": SYSTEM_INSTRUCTIONS}]
         
         # Check for review/scoring related keywords
         review_keywords = ["review", "assess", "grade", "evaluate", "score", "feedback"]
@@ -139,13 +139,11 @@ class EWA:
     
         if is_review:            
             messages.append({
-                "role": "assistant",
+                "role": "system",
                 "content": REVIEW_INSTRUCTIONS            
-            })
-            model = "o1-mini"
+            })            
             max_tokens = 1000
-        else:
-            model = "gpt-4o-mini"
+        else:            
             max_tokens = 200
 
         # Add conversation history
@@ -158,7 +156,7 @@ class EWA:
         try:
             # Get AI response
             response = OpenAI(api_key=st.secrets["default"]["OPENAI_API_KEY"]).chat.completions.create(
-                model=model,
+                model="gpt-4o-mini",
                 messages=messages,
                 temperature=0,
                 max_tokens=max_tokens
