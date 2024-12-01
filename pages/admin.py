@@ -33,27 +33,22 @@ class AdminDashboard:
     def get_last_login_from_chat(self, user_id):
         """Get user's last login time from their most recent chat message"""
         try:
-            # Get the user's most recent conversation
-            latest_msg_time = None
-            conversations = self.db.collection('conversations')\
+            # Only get the most recent conversation using orderBy and limit(1)
+            latest_conv = self.db.collection('conversations')\
                 .where('user_id', '==', user_id)\
+                .order_by('updated_at', direction=firestore.Query.DESCENDING)\
+                .limit(1)\
                 .stream()
         
-            for conv in conversations:
-                # Get the most recent message without filtering by role
-                messages = self.db.collection('conversations')\
-                    .document(conv.id)\
-                    .collection('messages')\
-                    .order_by('timestamp', direction=firestore.Query.DESCENDING)\
-                    .limit(1)\
-                    .stream()
-            
-                for msg in messages:
-                    msg_time = msg.get('timestamp')
-                    if msg_time and (not latest_msg_time or msg_time > latest_msg_time):
-                        latest_msg_time = msg_time
-        
-            return latest_msg_time
+            # Convert to list to check if any conversations exist
+            latest_conv = list(latest_conv)
+            if not latest_conv:
+                return None
+
+            # Use the updated_at timestamp from the conversation document
+            conv_data = latest_conv[0].to_dict()
+            return conv_data.get('updated_at')
+
         except Exception as e:
             st.error(f"Error getting last login: {e}")
             return None
