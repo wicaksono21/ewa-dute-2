@@ -238,39 +238,19 @@ class EWA:
         
             # Make authentication request
             response = requests.post(auth_url, json=auth_data)
-            response_data = response.json()
-        
             if response.status_code != 200:
-                error_msg = response_data.get('error', {}).get('message', 'Invalid email or password')
-                st.error(error_msg)
-                return False
-        
-            # If authentication successful, get user details
+                raise Exception("Authentication failed")
+            
+            # Get user details
             user = auth.get_user_by_email(email)
-        
-            # Clear any existing session state
-            st.session_state.clear()
-        
-            # Set up new session state
             st.session_state.user = user
-            st.session_state.logged_in = True
-            st.session_state.messages = [{
-                **INITIAL_ASSISTANT_MESSAGE,
-                "timestamp": self.format_time()
-            }]
-        
-            # Update last login time
-            self.db.collection('users').document(user.uid).set({
-                'email': email,
-                'last_login': firestore.SERVER_TIMESTAMP,
-                'role': 'user'
-            }, merge=True)
-        
+            st.session_state.logged_in = True 
+            st.session_state.messages = []
+            st.session_state.stage = 'initial'
             return True
         
         except Exception as e:
-            print(f"Login error: {str(e)}")  # For debugging
-            st.error("Login failed. Please check your credentials.")
+            st.error("Login failed")
             return False
         
 def main():
