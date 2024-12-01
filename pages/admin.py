@@ -40,11 +40,10 @@ class AdminDashboard:
                 .stream()
         
             for conv in conversations:
-                # Get the most recent message from each conversation
+                # Get the most recent message without filtering by role
                 messages = self.db.collection('conversations')\
                     .document(conv.id)\
                     .collection('messages')\
-                    .where('role', '==', 'user')\
                     .order_by('timestamp', direction=firestore.Query.DESCENDING)\
                     .limit(1)\
                     .stream()
