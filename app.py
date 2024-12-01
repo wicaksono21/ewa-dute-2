@@ -4,6 +4,7 @@ from firebase_admin import credentials, auth, firestore
 from openai import OpenAI
 from datetime import datetime
 import pytz
+import requests
 
 # Import configurations
 from stageprompts import INITIAL_ASSISTANT_MESSAGE
@@ -224,26 +225,34 @@ class EWA:
             return conversation_id
 
     def login(self, email, password):
-        """Simple login check"""
-        try:
-            # Just check if user exists
-            user = auth.get_user_by_email(email)
-            st.session_state.user = user
-            st.session_state.logged_in = True
-            st.session_state.messages = [{
-                **INITIAL_ASSISTANT_MESSAGE,
-                "timestamp": self.format_time()
-            }]
+    """Authenticate user with Firebase Auth REST API"""
+    try:
+        # Firebase Auth REST API endpoint
+        auth_url = f"https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key={st.secrets['default']['apiKey']}"
+        
+        # Request body
+        auth_data = {
+            "email": email,
+            "password": password,
+            "returnSecureToken": True
+        }
+        
+        # Make authentication request
+        response = requests.post(auth_url, json=auth_data)
+        if response.status_code != 200:
+            raise Exception("Authentication failed")
             
-            # Update last login
-            self.db.collection('users').document(user.uid).update({
-                'last_login': firestore.SERVER_TIMESTAMP
-            })
-            return True
-        except Exception as e:
-            print(f"Login error: {str(e)}")  # Add this for debugging
-            st.error("Login failed")
-            return False
+        # Get user details
+        user = auth.get_user_by_email(email)
+        st.session_state.user = user
+        st.session_state.logged_in = True 
+        st.session_state.messages = []
+        st.session_state.stage = 'initial'
+        return True
+        
+    except Exception as e:
+        st.error("Login failed")
+        return False
 
 
 def main():
