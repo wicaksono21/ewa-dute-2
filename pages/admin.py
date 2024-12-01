@@ -128,6 +128,15 @@ class AdminDashboard:
             deleted += 1
         if deleted >= batch_size:
             return self._batch_delete(collection_ref, batch_size)
+
+    def format_timestamp(self, timestamp):
+        """Helper method to format timestamp consistently"""
+        if isinstance(timestamp, (datetime, type(firestore.SERVER_TIMESTAMP))):
+            try:
+                return timestamp.astimezone(self.tz).strftime("%Y-%m-%d %H:%M:%S")
+            except AttributeError:
+                return 'N/A'
+        return 'N/A'
     
     def render_dashboard(self):
         st.title("Admin Dashboard")
@@ -155,18 +164,29 @@ class AdminDashboard:
         # User Management
         st.subheader("User Management")
         users_ref = self.db.collection('users').stream()
-        users = [{"id": doc.id, **doc.to_dict()} for doc in users_ref]
+        users = []
+
+        # Process users with proper error handling
+        for doc in users_ref:
+            user_data = doc.to_dict()
+            last_login = user_data.get('last_login')
+            
+            users.append({
+                "id": doc.id,
+                "email": user_data.get('email', 'N/A'),
+                "role": user_data.get('role', 'N/A'),
+                "last_login": self.format_timestamp(last_login)
+            })
         
-        # Create user table with proper timezone handling
-        st.table({
-            'Email': [user.get('email', 'N/A') for user in users],
-            'Role': [user.get('role', 'N/A') for user in users],
-            'Last Login': [
-                user.get('last_login').astimezone(self.tz).strftime("%Y-%m-%d %H:%M:%S")
-                if user.get('last_login') is not None else 'N/A' 
-                for user in users
-            ]
-        })
+         # Create user table with processed data
+        if users:
+            st.table({
+                'Email': [user['email'] for user in users],
+                'Role': [user['role'] for user in users],
+                'Last Login': [user['last_login'] for user in users]
+            })
+        else:
+            st.info("No users found in the database.")
         
         # Essay History
         st.subheader("Essay History")
