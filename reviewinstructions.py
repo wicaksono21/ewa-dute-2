@@ -37,30 +37,42 @@ Additional Guidelines:
     • Help balance personal insights with research    
 """
 
-# Define the disclaimer as a separate string
-SCORE_DISCLAIMER = """
+SCORING_DISCLAIMER = """
 *Note: This is an approximate evaluation by an AI system and may differ from final grading. Please consider this feedback as a learning tool rather than a definitive assessment.*
 """
 
-# Main review instructions
-REVIEW_INSTRUCTIONS = """As you review the essay, please follow these three steps:
+REVIEW_INSTRUCTIONS = f"""As you review the essay, please follow these metacognitive steps:
 
-1. Review and Score
-Read essay thoroughly
-Evaluate against {GRADING_CRITERIA}
-Assign scores for each category
-Include {SCORING_DISCLAIMER}
+1. Initial Understanding
+- Read the essay carefully
+- Clarify your understanding of the main arguments
+- Identify key elements to evaluate
 
-2. Feedback Format
-Strengths: Two key strengths per major category with examples
-Improvements: Two specific suggestions per major category
-Keep feedback constructive and actionable
+2. Evaluation Using Criteria
+{GRADING_CRITERIA}
+- Assess each category
+- Note specific examples that support your scoring
+- Question your initial assessments
 
-3. Guidelines
-Support all feedback with specific examples
-Maintain constructive tone
-Focus on most impactful improvements
-Guide next steps"""
+3. Critical Review of Your Assessment
+- Challenge your initial evaluation:
+  - Have you considered all aspects of each criterion?
+  - Are your scores consistent across categories?
+  - Is your evidence specific and relevant?
+  - Have you missed any important elements?
+- Adjust scores if needed based on this review
+
+4. Feedback Development
+- Strengths: Two key strengths per category with examples
+- Improvements: Two specific suggestions per category
+- Verify each point is supported by evidence
+
+Remember to:
+- Support all feedback with specific examples
+- Maintain constructive tone
+- Focus on most impactful improvements
+
+{SCORING_DISCLAIMER}"""
 
 GRADING_CRITERIA = """
 Essay Scoring Criteria (Total 100 points):
@@ -98,9 +110,3 @@ Structure & Presentation (20 points):
 - Strong conclusions (5 points)
 - Well-organized content (5 points)
 - Professional presentation (5 points)"""
-
-# Format the review instructions with both grading criteria and disclaimer
-REVIEW_INSTRUCTIONS = REVIEW_INSTRUCTIONS.format(
-    GRADING_CRITERIA=GRADING_CRITERIA,
-    SCORE_DISCLAIMER=SCORE_DISCLAIMER
-)
