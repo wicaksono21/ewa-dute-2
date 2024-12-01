@@ -37,71 +37,55 @@ Additional Guidelines:
     • Help balance personal insights with research    
 """
 
-SCORING_DISCLAIMER = """
-*Note: This is an approximate evaluation by an AI system and may differ from final grading. Please consider this feedback as a learning tool rather than a definitive assessment.*
-"""
-
 REVIEW_INSTRUCTIONS = """As you review the essay, please follow these steps and provide feedback in this exact structure:
 
-1. Scoring Overview
-Estimated Total Score: [X/100]
+# Review Process
 
-Understanding & Analysis ([score]/40):
-- Topic Understanding: [X/15]
-  - Supporting evidence from essay: [quote/example]
-- Literature Review: [X/15]
-  - Supporting evidence from essay: [quote/example]
-- Creative Thinking: [X/10]
-  - Supporting evidence from essay: [quote/example]
+## Metacognitive Steps
+1. **Clarify Understanding**
+   - Read essay completely
+   - Identify essay type (design case/critique)
+   - Note main arguments and approach
 
-Research Approach ([score]/40):
-- Method & Planning: [X/10]
-  - Supporting evidence from essay: [quote/example]
-- Analysis & Insight: [X/15]
-  - Supporting evidence from essay: [quote/example]
-- Evidence & Support: [X/15]
-  - Supporting evidence from essay: [quote/example]
+2. **Preliminary Analysis**
+   - Review scoring criteria
+   - Make initial notes on how essay meets each criterion
+   - Propose preliminary scores
 
-Structure & Presentation ([score]/20):
-- Logical Flow: [X/5]
-  - Supporting evidence from essay: [quote/example]
-- Conclusions: [X/5]
-  - Supporting evidence from essay: [quote/example]
-- Organization: [X/5]
-  - Supporting evidence from essay: [quote/example]
-- Presentation: [X/5]
-  - Supporting evidence from essay: [quote/example]
+3. **Critical Assessment**
+   - Challenge initial impressions
+   - Check if you missed any important elements
+   - Adjust scores if needed
 
-2. Detailed Feedback Per Category:
+4. **Final Review & Explanation**
+   - Confirm final scores
+   - Provide evidence-based feedback
+   - Explain reasoning for each assessment
 
-Understanding & Analysis:
-- Strengths:
-  1. [First strength with specific example]
-  2. [Second strength with specific example]
-- Improvements:
-  1. [First improvement suggestion]
-  2. [Second improvement suggestion]
+# Review Template
 
-Research Approach:
-- Strengths:
-  1. [First strength with specific example]
-  2. [Second strength with specific example]
-- Improvements:
-  1. [First improvement suggestion]
-  2. [Second improvement suggestion]
+# Estimated Grade
+**Total Score: [X/100]**
 
-Structure & Presentation:
-- Strengths:
-  1. [First strength with specific example]
-  2. [Second strength with specific example]
-- Improvements:
-  1. [First improvement suggestion]
-  2. [Second improvement suggestion]
+# Assessment Areas:
+1. **Understanding & Analysis ([X]/40):** [Brief 1-2 sentence summary of performance in this area]
+   - **Strength:** [Specific example with quote from essay]
+   - **Suggestions for Improvement:**
+     1. [First specific, actionable suggestion with example]
+     2. [Second specific, actionable suggestion with example]
 
-3. Critical Review Checklist:
-- Have all criteria been fairly assessed? [Yes/No]
-- Are scores consistent across categories? [Yes/No]
-- Is all feedback supported by specific evidence? [Yes/No]
-- Have all major elements been considered? [Yes/No]
+2. **Research Approach ([X]/40):** [Brief 1-2 sentence summary of performance in this area]
+   - **Strength:** [Specific example with quote from essay]
+   - **Suggestions for Improvement:**
+     1. [First specific, actionable suggestion with example]
+     2. [Second specific, actionable suggestion with example]
 
-{SCORING_DISCLAIMER}"""
+3. **Structure & Presentation ([X]/20):** [Brief 1-2 sentence summary of performance in this area]
+   - **Strength:** [Specific example with quote from essay]
+   - **Suggestions for Improvement:**
+     1. [First specific, actionable suggestion with example]
+     2. [Second specific, actionable suggestion with example]
+
+*Note: This is an approximate evaluation by an AI system and may differ from final grading. Please consider this feedback as a learning tool rather than a definitive assessment.*
+
+Is there any specific area you would like me to elaborate further?"""
