@@ -137,13 +137,15 @@ class EWA:
         review_keywords = ["review", "assess", "grade", "evaluate", "score", "feedback"]
         is_review = any(keyword in prompt.lower() for keyword in review_keywords)
     
-        if is_review:
-            max_tokens = 1000
+        if is_review:            
             messages.append({
                 "role": "system",
                 "content": REVIEW_INSTRUCTIONS            
-            })            
+            })
+            model = "o1-mini"
+            max_tokens = 1000
         else:
+            model = "gpt-4o-mini"
             max_tokens = 200
 
         # Add conversation history
@@ -156,7 +158,7 @@ class EWA:
         try:
             # Get AI response
             response = OpenAI(api_key=st.secrets["default"]["OPENAI_API_KEY"]).chat.completions.create(
-                model="gpt-4o-mini",
+                model=model,
                 messages=messages,
                 temperature=0,
                 max_tokens=max_tokens
