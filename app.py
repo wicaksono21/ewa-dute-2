@@ -224,42 +224,35 @@ class EWA:
             return conversation_id
 
     def login(self, email, password):
-        """Authenticate user with Firebase Auth REST API"""
         try:
-            # Make authentication request
-            auth_url = f"https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key={st.secrets['default']['apiKey']}"
-            response = requests.post(auth_url, json={
-                "email": email,
-                "password": password,
-                "returnSecureToken": True
-            })
-        
-            if response.status_code != 200:
-                st.error("Invalid email or password")
-                return False
-            
-            # Get user and update login time
+            # Get user details first
             user = auth.get_user_by_email(email)
+        
+            # Set up session state
+            st.session_state.user = user
+            st.session_state.logged_in = True
+            st.session_state.messages = []
+        
+            # Update last login time
             self.db.collection('users').document(user.uid).set({
                 'email': email,
                 'last_login': firestore.SERVER_TIMESTAMP,
                 'role': 'user'
             }, merge=True)
         
-            # Setup session
-            st.session_state.user = user
-            st.session_state.logged_in = True
+            # Add initial message
             st.session_state.messages = [{
-                **INITIAL_ASSISTANT_MESSAGE, 
+                **INITIAL_ASSISTANT_MESSAGE,
                 "timestamp": self.format_time()
             }]
         
             return True
-            
+        
         except Exception as e:
+            print(f"Login error: {str(e)}")  # For debugging
             st.error("Login failed")
             return False
-
+        
 def main():
     app = EWA()
 
