@@ -30,16 +30,34 @@ class AdminDashboard:
             st.session_state.selected_conversations = all_ids
         st.session_state.show_batch_delete = len(st.session_state.selected_conversations) > 0
 
-    def update_last_login(self, user_id):
-        """Update user's last login timestamp"""
+    def get_last_login_from_chat(self, user_id):
+        """Get user's last login time from their most recent chat message"""
         try:
-            self.db.collection('users').document(user_id).update({
-                'last_login': firestore.SERVER_TIMESTAMP
-            })
-            return True
+            # Get the user's most recent conversation
+            latest_msg_time = None
+            conversations = self.db.collection('conversations')\
+                .where('user_id', '==', user_id)\
+                .stream()
+        
+            for conv in conversations:
+                # Get the most recent message from each conversation
+                messages = self.db.collection('conversations')\
+                    .document(conv.id)\
+                    .collection('messages')\
+                    .where('role', '==', 'user')\
+                    .order_by('timestamp', direction=firestore.Query.DESCENDING)\
+                    .limit(1)\
+                    .stream()
+            
+                for msg in messages:
+                    msg_time = msg.get('timestamp')
+                    if msg_time and (not latest_msg_time or msg_time > latest_msg_time):
+                        latest_msg_time = msg_time
+        
+            return latest_msg_time
         except Exception as e:
-            st.error(f"Error updating last login: {e}")
-            return False
+            st.error(f"Error getting last login: {e}")
+            return None
 
     def create_user_document(self, user):
         """Create or update user document in Firestore"""
@@ -47,8 +65,7 @@ class AdminDashboard:
             user_data = {
                 'email': user.email,
                 'role': 'user',
-                'created_at': firestore.SERVER_TIMESTAMP,
-                'last_login': firestore.SERVER_TIMESTAMP
+                'created_at': firestore.SERVER_TIMESTAMP                
             }
             
             self.db.collection('users').document(user.uid).set(user_data)
@@ -169,21 +186,23 @@ class AdminDashboard:
         # Process users with proper error handling
         for doc in users_ref:
             user_data = doc.to_dict()
-            last_login = user_data.get('last_login')
-            
+    
+            # Get last login from chat history
+            last_login = self.get_last_login_from_chat(doc.id)
+    
             users.append({
                 "id": doc.id,
                 "email": user_data.get('email', 'N/A'),
                 "role": user_data.get('role', 'N/A'),
                 "last_login": self.format_timestamp(last_login)
-            })
+        })
         
          # Create user table with processed data
         if users:
             st.table({
                 'Email': [user['email'] for user in users],
                 'Role': [user['role'] for user in users],
-                'Last Login': [user['last_login'] for user in users]
+                'Last Active': [user['last_login'] for user in users]
             })
         else:
             st.info("No users found in the database.")
