@@ -141,32 +141,32 @@ class EWA:
             messages.append({
                 "role": "system",
                 "content": REVIEW_INSTRUCTIONS
-        })
-        # Add specific instruction to always include disclaimer
-        messages.append({
-            "role": "system",
-            "content": "Always end your review with the evaluation disclaimer and ask if any areas need elaboration."
-        })
-        max_tokens = 1000
-    else:
-        max_tokens = 200
+            })
+            # Add specific instruction to always include disclaimer
+            messages.append({
+                "role": "system",
+                "content": "Always end your review with the evaluation disclaimer and ask if any areas need elaboration."
+            })
+            max_tokens = 1000
+        else:
+            max_tokens = 200
 
-    try:
-        # Get AI response
-        response = OpenAI(api_key=st.secrets["default"]["OPENAI_API_KEY"]).chat.completions.create(
-            model="gpt-4o-mini",
-            messages=messages,
-            temperature=0,
-            max_tokens=max_tokens
-        )
+        try:
+            # Get AI response
+            response = OpenAI(api_key=st.secrets["default"]["OPENAI_API_KEY"]).chat.completions.create(
+                model="gpt-4o-mini",
+                messages=messages,
+                temperature=0,
+                max_tokens=max_tokens
+            )
 
-        assistant_content = response.choices[0].message.content
+            assistant_content = response.choices[0].message.content
         
-        # Ensure disclaimer for review responses
-        if is_review and "Note: This is an approximate evaluation" not in assistant_content:
-            assistant_content += "\n\nIs there any specific area you would like me to elaborate further?\n\n*Note: This is an approximate evaluation by an AI system and may differ from final grading. Please consider this feedback as a learning tool rather than a definitive assessment.*"
+            # Ensure disclaimer for review responses
+            if is_review and "Note: This is an approximate evaluation" not in assistant_content:
+                assistant_content += "\n\nIs there any specific area you would like me to elaborate further?\n\n*Note: This is an approximate evaluation by an AI system and may differ from final grading. Please consider this feedback as a learning tool rather than a definitive assessment.*"
 
-        st.chat_message("assistant").write(f"{time_str} {assistant_content}")
+            st.chat_message("assistant").write(f"{time_str} {assistant_content}")
 
             # Update session state
             if 'messages' not in st.session_state:
