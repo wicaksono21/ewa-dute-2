@@ -131,7 +131,7 @@ class EWA:
         st.chat_message("user").write(f"{time_str} {prompt}")
 
         # Build messages context
-        messages = [{"role": "system", "content": SYSTEM_INSTRUCTIONS}]
+        messages = [{"role": "assistant", "content": SYSTEM_INSTRUCTIONS}]
         
         # Check for review/scoring related keywords
         review_keywords = ["review", "assess", "grade", "evaluate", "score", "feedback"]
@@ -139,7 +139,7 @@ class EWA:
     
         if is_review:            
             messages.append({
-                "role": "system",
+                "role": "assistant",
                 "content": REVIEW_INSTRUCTIONS            
             })
             model = "o1-mini"
