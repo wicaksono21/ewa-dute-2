@@ -226,46 +226,39 @@ class EWA:
     def login(self, email, password):
         """Authenticate user with Firebase Auth REST API"""
         try:
-            # Firebase Auth REST API endpoint
+            # Make authentication request
             auth_url = f"https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key={st.secrets['default']['apiKey']}"
-        
-            # Request body
-            auth_data = {
+            response = requests.post(auth_url, json={
                 "email": email,
                 "password": password,
                 "returnSecureToken": True
-            }
+            })
         
-            # Make authentication request
-            response = requests.post(auth_url, json=auth_data)
             if response.status_code != 200:
-                raise Exception("Authentication failed")
-
-            # Get user details and current time
+                st.error("Invalid email or password")
+                return False
+            
+            # Get user and update login time
             user = auth.get_user_by_email(email)
-            current_time = datetime.now(self.tz)
-
-            # Update user document with last login
             self.db.collection('users').document(user.uid).set({
                 'email': email,
-                'last_login': current_time,
-                'role': 'user'  # Set default role if not exists
+                'last_login': firestore.SERVER_TIMESTAMP,
+                'role': 'user'
             }, merge=True)
         
-            # Set session state
+            # Setup session
             st.session_state.user = user
-            st.session_state.logged_in = True 
-            st.session_state.messages = []          
-                            
-            # Add initial message with timestamp
-            initial_msg = {**INITIAL_ASSISTANT_MESSAGE, "timestamp": self.format_time()}
-            st.session_state.messages.append(initial_msg)
-            return True 
+            st.session_state.logged_in = True
+            st.session_state.messages = [{
+                **INITIAL_ASSISTANT_MESSAGE, 
+                "timestamp": self.format_time()
+            }]
+        
+            return True
             
-        except Exception as e:
-            st.error("Login failed")
-            return False
-
+    except Exception as e:
+        st.error("Login failed")
+        return False
 
 def main():
     app = EWA()
