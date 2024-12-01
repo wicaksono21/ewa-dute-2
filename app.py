@@ -140,12 +140,7 @@ class EWA:
         if is_review:
             messages.append({
                 "role": "system",
-                "content": REVIEW_INSTRUCTIONS
-            })
-            # Add specific instruction to always include disclaimer
-            messages.append({
-                "role": "system",
-                "content": "Always end your review with the evaluation disclaimer and ask if any areas need elaboration."
+                "content": REVIEW_INSTRUCTIONS            
             })
             max_tokens = 1000
         else:
@@ -160,12 +155,7 @@ class EWA:
                 max_tokens=max_tokens
             )
 
-            assistant_content = response.choices[0].message.content
-        
-            # Ensure disclaimer for review responses
-            if is_review and "Note: This is an approximate evaluation" not in assistant_content:
-                assistant_content += "\n\nIs there any specific area you would like me to elaborate further?\n\n*Note: This is an approximate evaluation by an AI system and may differ from final grading. Please consider this feedback as a learning tool rather than a definitive assessment.*"
-
+            assistant_content = response.choices[0].message.content      
             st.chat_message("assistant").write(f"{time_str} {assistant_content}")
 
             # Update session state
