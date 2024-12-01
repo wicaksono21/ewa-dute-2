@@ -8,7 +8,7 @@ import requests
 
 # Import configurations
 from stageprompts import INITIAL_ASSISTANT_MESSAGE
-from reviewinstructions import SYSTEM_INSTRUCTIONS, REVIEW_INSTRUCTIONS, GRADING_CRITERIA
+from reviewinstructions import SYSTEM_INSTRUCTIONS, REVIEW_INSTRUCTIONS
 
 # Initialize Firebase
 if not firebase_admin._apps:
@@ -136,17 +136,9 @@ class EWA:
         # Check for review/scoring related keywords
         review_keywords = ["review", "assess", "grade", "evaluate", "score", "feedback"]
         if any(keyword in prompt.lower() for keyword in review_keywords):
-            # Include both review instructions and grading criteria for comprehensive evaluation
-            evaluation_instructions = f"""
-            {REVIEW_INSTRUCTIONS}
-
-            When evaluating the essay, use this specific grading criteria:
-
-            {GRADING_CRITERIA}
-            """
             messages.append({
                 "role": "system",
-                "content": evaluation_instructions
+                "content": REVIEW_INSTRUCTIONS
             })
             max_tokens = 1000
         else:
