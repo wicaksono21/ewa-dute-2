@@ -245,7 +245,10 @@ class EWA:
             user = auth.get_user_by_email(email)
             st.session_state.user = user
             st.session_state.logged_in = True 
-            st.session_state.messages = []
+            st.session_state.messages = [{
+                **INITIAL_ASSISTANT_MESSAGE,
+                "timestamp": self.format_time()
+            }]
             st.session_state.stage = 'initial'
             return True
         
