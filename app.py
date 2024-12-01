@@ -225,34 +225,34 @@ class EWA:
             return conversation_id
 
     def login(self, email, password):
-    """Authenticate user with Firebase Auth REST API"""
-    try:
-        # Firebase Auth REST API endpoint
-        auth_url = f"https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key={st.secrets['default']['apiKey']}"
+        """Authenticate user with Firebase Auth REST API"""
+        try:
+            # Firebase Auth REST API endpoint
+            auth_url = f"https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key={st.secrets['default']['apiKey']}"
         
-        # Request body
-        auth_data = {
-            "email": email,
-            "password": password,
-            "returnSecureToken": True
-        }
+            # Request body
+            auth_data = {
+                "email": email,
+                "password": password,
+                "returnSecureToken": True
+            }
         
-        # Make authentication request
-        response = requests.post(auth_url, json=auth_data)
-        if response.status_code != 200:
-            raise Exception("Authentication failed")
+            # Make authentication request
+            response = requests.post(auth_url, json=auth_data)
+            if response.status_code != 200:
+                raise Exception("Authentication failed")
             
-        # Get user details
-        user = auth.get_user_by_email(email)
-        st.session_state.user = user
-        st.session_state.logged_in = True 
-        st.session_state.messages = []
-        st.session_state.stage = 'initial'
-        return True
+            # Get user details
+            user = auth.get_user_by_email(email)
+            st.session_state.user = user
+            st.session_state.logged_in = True 
+            st.session_state.messages = []
+            st.session_state.stage = 'initial'
+            return True
         
-    except Exception as e:
-        st.error("Login failed")
-        return False
+        except Exception as e:
+            st.error("Login failed")
+            return False
 
 
 def main():
