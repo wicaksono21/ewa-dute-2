@@ -243,6 +243,10 @@ class EWA:
             
             # Get user details
             user = auth.get_user_by_email(email)
+
+            # Add this one line to update last login
+            self.db.collection('users').document(user.uid).update({'last_login': firestore.SERVER_TIMESTAMP})
+            
             st.session_state.user = user
             st.session_state.logged_in = True 
             st.session_state.messages = []            
