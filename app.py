@@ -133,17 +133,22 @@ class EWA:
         # Build messages context
         messages = [{"role": "system", "content": SYSTEM_INSTRUCTIONS}]
         
-        # Check for review-related keywords
+        # Check for review/scoring related keywords
         review_keywords = ["review", "assess", "grade", "evaluate", "score", "feedback"]
-        is_review = any(keyword in prompt.lower() for keyword in review_keywords)
-    
-        # Set max tokens and add review instructions if needed
-        if is_review:
-            max_tokens = 1000
+        if any(keyword in prompt.lower() for keyword in review_keywords):
+            # Include both review instructions and grading criteria for comprehensive evaluation
+            evaluation_instructions = f"""
+            {REVIEW_INSTRUCTIONS}
+
+            When evaluating the essay, use this specific grading criteria:
+
+            {GRADING_CRITERIA}
+            """
             messages.append({
                 "role": "system",
-                "content": REVIEW_INSTRUCTIONS
+                "content": evaluation_instructions
             })
+            max_tokens = 1000
         else:
             max_tokens = 200
             
