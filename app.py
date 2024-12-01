@@ -138,13 +138,20 @@ class EWA:
         is_review = any(keyword in prompt.lower() for keyword in review_keywords)
     
         if is_review:
+            max_tokens = 1000
             messages.append({
                 "role": "system",
                 "content": REVIEW_INSTRUCTIONS            
-            })
-            max_tokens = 1000
+            })            
         else:
             max_tokens = 200
+
+        # Add conversation history
+        if 'messages' in st.session_state:
+            messages.extend(st.session_state.messages)
+
+        # Add current prompt
+        messages.append({"role": "user", "content": prompt})
 
         try:
             # Get AI response
