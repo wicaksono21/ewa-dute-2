@@ -256,9 +256,9 @@ class EWA:
         
             return True
             
-    except Exception as e:
-        st.error("Login failed")
-        return False
+        except Exception as e:
+            st.error("Login failed")
+            return False
 
 def main():
     app = EWA()
