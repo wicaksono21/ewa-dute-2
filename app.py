@@ -27,7 +27,7 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 class EWA:
-    def __init__(self):
+    def __init__(self):        
         self.tz = pytz.timezone("Europe/London")
         self.conversations_per_page = 10  # Number of conversations per page
 
@@ -224,14 +224,40 @@ class EWA:
             return conversation_id
 
     def login(self, email, password):
+        """Authenticate user with Firebase Auth REST API"""
         try:
-            # Get user details first
+            # Firebase Auth REST API endpoint
+            auth_url = f"https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key={st.secrets['default']['apiKey']}"
+        
+            # Request body
+            auth_data = {
+                "email": email,
+                "password": password,
+                "returnSecureToken": True
+            }
+        
+            # Make authentication request
+            response = requests.post(auth_url, json=auth_data)
+            response_data = response.json()
+        
+            if response.status_code != 200:
+                error_msg = response_data.get('error', {}).get('message', 'Invalid email or password')
+                st.error(error_msg)
+                return False
+        
+            # If authentication successful, get user details
             user = auth.get_user_by_email(email)
         
-            # Set up session state
+            # Clear any existing session state
+            st.session_state.clear()
+        
+            # Set up new session state
             st.session_state.user = user
             st.session_state.logged_in = True
-            st.session_state.messages = []
+            st.session_state.messages = [{
+                **INITIAL_ASSISTANT_MESSAGE,
+                "timestamp": self.format_time()
+            }]
         
             # Update last login time
             self.db.collection('users').document(user.uid).set({
@@ -240,17 +266,11 @@ class EWA:
                 'role': 'user'
             }, merge=True)
         
-            # Add initial message
-            st.session_state.messages = [{
-                **INITIAL_ASSISTANT_MESSAGE,
-                "timestamp": self.format_time()
-            }]
-        
             return True
         
         except Exception as e:
             print(f"Login error: {str(e)}")  # For debugging
-            st.error("Login failed")
+            st.error("Login failed. Please check your credentials.")
             return False
         
 def main():
