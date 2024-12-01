@@ -162,9 +162,8 @@ class AdminDashboard:
             'Email': [user.get('email', 'N/A') for user in users],
             'Role': [user.get('role', 'N/A') for user in users],
             'Last Login': [
-                user.get('last_login', firestore.SERVER_TIMESTAMP).astimezone(pytz.UTC)
-                .astimezone(self.tz).strftime("%Y-%m-%d %H:%M:%S")
-                if user.get('last_login') else 'N/A' 
+                user.get('last_login').astimezone(self.tz).strftime("%Y-%m-%d %H:%M:%S")
+                if user.get('last_login') is not None else 'N/A' 
                 for user in users
             ]
         })
