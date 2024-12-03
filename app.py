@@ -242,8 +242,8 @@ class EWA:
                         'updated_at': firestore_time,
                         'title': title,
                         'status': 'active'
-                    })
-                    st.session_state.current_conversation_id = conversation_id
+                })
+                st.session_state.current_conversation_id = conversation_id
 
             # Save message
             conv_ref = db.collection('conversations').document(conversation_id)
