@@ -37,35 +37,7 @@ class EWA:
         if isinstance(dt, (datetime, type(firestore.SERVER_TIMESTAMP))):
             return dt.strftime("[%Y-%m-%d %H:%M:%S]")
         dt = dt or datetime.now(self.tz)
-        return dt.strftime("[%Y-%m-%d %H:%M:%S]")
-
-    def generate_title(self, conversation_id, current_time):
-        """Generate title based on conversation context with total message count"""
-        try:
-            messages = list(self.db.collection('conversations')
-                       .document(conversation_id)
-                       .collection('messages')
-                       .order_by('timestamp')
-                       .stream())
-        
-            context = " ".join([msg.to_dict()['content'] for msg in messages[-5:]])
-            total_count = len(messages)
-        
-            summary = OpenAI(api_key=st.secrets["default"]["OPENAI_API_KEY"]).chat.completions.create(
-                model="gpt-4o-mini",
-                messages=[
-                    {"role": "system", "content": "Create a 3-5 word title summarizing this conversation."},
-                    {"role": "user", "content": context}
-                ],
-                temperature=0.3,
-                max_tokens=10
-            ).choices[0].message.content.strip()
-        
-            return f"{current_time.strftime('%b %d, %Y')} • {summary} [{total_count}📝]"
-        
-        except Exception as e:
-            return f"{current_time.strftime('%b %d, %Y')} • New Conversation [0📝]"       
-        
+        return dt.strftime("[%Y-%m-%d %H:%M:%S]")           
 
     def get_conversations(self, user_id):
         """Retrieve conversation history from Firestore"""
@@ -228,7 +200,7 @@ class EWA:
             st.error(f"Error processing message: {str(e)}")
 
     def save_message(self, conversation_id, message):
-        """Save message and update title"""
+        """Save message and update title with summary"""
         current_time = datetime.now(self.tz)
 
         try:
@@ -240,26 +212,41 @@ class EWA:
                     'user_id': st.session_state.user.uid,
                     'created_at': firestore.SERVER_TIMESTAMP,
                     'updated_at': firestore.SERVER_TIMESTAMP,
-                    'title': f"{current_time.strftime('%b %d, %Y')} • New Conversation [1📝]",
+                    'title': f"{current_time.strftime('%b %d, %Y')} • New Chat [1📝]",
                     'status': 'active'
                 })
                 st.session_state.current_conversation_id = conversation_id
         
-            # Save the message
+            # Save message
             conv_ref = db.collection('conversations').document(conversation_id)
             conv_ref.collection('messages').add({
                 **message,
                 "timestamp": firestore.SERVER_TIMESTAMP
             })
 
-            # Get message count and update title 
+            # Get messages for count and context
             messages = list(conv_ref.collection('messages').get())
             count = len(messages)
         
-            # Update conversation title with count
+            # Get last 5 messages for context
+            recent_messages = [msg.to_dict()['content'] for msg in messages[-5:]]
+            context = " ".join(recent_messages)
+        
+            # Get summary from GPT
+            summary = OpenAI(api_key=st.secrets["default"]["OPENAI_API_KEY"]).chat.completions.create(
+                model="gpt-4o-mini",
+                messages=[
+                    {"role": "system", "content": "Create a 2-3 word title for this conversation."},
+                    {"role": "user", "content": context}
+                ],
+                temperature=0.3,
+                max_tokens=10
+            ).choices[0].message.content.strip()
+        
+            # Update conversation with summary title and count
             conv_ref.set({
                 'updated_at': firestore.SERVER_TIMESTAMP,
-                'title': f"{current_time.strftime('%b %d, %Y')} • Conversation [{count}📝]"
+                'title': f"{current_time.strftime('%b %d, %Y')} • {summary} [{count}📝]"
             }, merge=True)
         
             return conversation_id
