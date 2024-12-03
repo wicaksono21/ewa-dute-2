@@ -262,7 +262,7 @@ class EWA:
                 'title': f"{current_time.strftime('%b %d, %Y')} • Conversation [{count}📝]"
             }, merge=True)
         
-        return conversation_id
+            return conversation_id
             
     except Exception as e:
         st.error(f"Error: {str(e)}")
