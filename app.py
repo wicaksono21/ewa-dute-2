@@ -264,9 +264,9 @@ class EWA:
         
             return conversation_id
             
-    except Exception as e:
-        st.error(f"Error: {str(e)}")
-        return conversation_id
+        except Exception as e:
+            st.error(f"Error: {str(e)}")
+            return conversation_id
         
     def login(self, email, password):
         """Authenticate user with Firebase Auth REST API"""
