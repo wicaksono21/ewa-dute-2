@@ -8,7 +8,7 @@ import requests
 
 # Import configurations
 from stageprompts import INITIAL_ASSISTANT_MESSAGE
-from reviewinstructions import SYSTEM_INSTRUCTIONS, REVIEW_INSTRUCTIONS, DISCLAIMER
+from reviewinstructions import SYSTEM_INSTRUCTIONS, REVIEW_INSTRUCTIONS, DISCLAIMER, SCORING_CRITERIA
 
 # Initialize Firebase
 if not firebase_admin._apps:
