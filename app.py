@@ -40,9 +40,37 @@ class EWA:
         return dt.strftime("[%Y-%m-%d %H:%M:%S]")
 
     def generate_title(self, message_content, current_time):
-        """Generate title from date and first 4 words of message"""
-        title = current_time.strftime('%b %d, %Y • ') + ' '.join(message_content.split()[:4])
-        return title[:50] if len(title) > 50 else title
+        """Generate a meaningful title by summarizing the conversation content"""
+        try:
+            # Initialize OpenAI client
+            client = OpenAI(api_key=st.secrets["default"]["OPENAI_API_KEY"])
+        
+            # Create prompt for summarization
+            prompt = f"Please summarize this message into a brief, descriptive title (max 5 words): {message_content}"
+        
+            # Get summary from GPT
+            response = client.chat.completions.create(
+                model="gpt-4o-mini",
+                messages=[
+                    {"role": "system", "content": "You are a helpful assistant that creates short, descriptive titles."},
+                    {"role": "user", "content": prompt}
+                ],
+                temperature=0.3,
+                max_tokens=10  # Keep it very short
+            )
+        
+            # Extract summary
+            summary = response.choices[0].message.content.strip()
+        
+            # Combine date with summary
+            title = current_time.strftime('%b %d, %Y • ') + summary
+        
+            # Ensure title isn't too long
+            return title[:50] if len(title) > 50 else title
+        
+        except Exception as e:
+            # Fallback to original method if summarization fails
+            return current_time.strftime('%b %d, %Y • ') + ' '.join(message_content.split()[:4])
 
     def get_conversations(self, user_id):
         """Retrieve conversation history from Firestore"""
