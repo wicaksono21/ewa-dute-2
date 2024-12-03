@@ -228,20 +228,23 @@ class EWA:
             st.error(f"Error processing message: {str(e)}")
 
     def save_message(self, conversation_id, message):
-        """Save message to Firestore database"""
+        """Save message and update title"""
         current_time = datetime.now(self.tz)
         firestore_time = firestore.SERVER_TIMESTAMP
 
         try:
+            # For new conversations
             if not conversation_id:
                 new_conv_ref = db.collection('conversations').document()
-                conversation_id = new_conv_ref.id                              
+                conversation_id = new_conv_ref.id
+                # Create with initial title
+                initial_title = f"{current_time.strftime('%b %d, %Y')} • New Conversation [0📝]"
                 new_conv_ref.set({
-                        'user_id': st.session_state.user.uid,
-                        'created_at': firestore_time,
-                        'updated_at': firestore_time,
-                        'title': title,
-                        'status': 'active'
+                    'user_id': st.session_state.user.uid,
+                    'created_at': firestore_time,
+                    'updated_at': firestore_time,
+                    'title': initial_title,
+                    'status': 'active'
                 })
                 st.session_state.current_conversation_id = conversation_id
 
@@ -252,19 +255,19 @@ class EWA:
                 "timestamp": firestore_time
             })
         
-            # Generate and update title after saving message
-            title = self.generate_title(conversation_id, current_time)
-            conv_ref.update({
+            # Update title only after message is saved
+            new_title = self.generate_title(conversation_id, current_time)
+            conv_ref.set({
                 'updated_at': firestore_time,
-                'title': title
-            })
-            
+                'title': new_title
+            }, merge=True)
+        
             return conversation_id
             
         except Exception as e:
             st.error(f"Error saving message: {str(e)}")
             return conversation_id
-
+        
     def login(self, email, password):
         """Authenticate user with Firebase Auth REST API"""
         try:
