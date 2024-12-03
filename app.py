@@ -230,43 +230,43 @@ class EWA:
     def save_message(self, conversation_id, message):
         """Save message and update title"""
         current_time = datetime.now(self.tz)
-        firestore_time = firestore.SERVER_TIMESTAMP
 
         try:
-            # For new conversations
+            # For new conversation
             if not conversation_id:
                 new_conv_ref = db.collection('conversations').document()
                 conversation_id = new_conv_ref.id
-                # Create with initial title
-                initial_title = f"{current_time.strftime('%b %d, %Y')} • New Conversation [0📝]"
                 new_conv_ref.set({
                     'user_id': st.session_state.user.uid,
-                    'created_at': firestore_time,
-                    'updated_at': firestore_time,
-                    'title': initial_title,
+                    'created_at': firestore.SERVER_TIMESTAMP,
+                    'updated_at': firestore.SERVER_TIMESTAMP,
+                    'title': f"{current_time.strftime('%b %d, %Y')} • New Conversation [1📝]",
                     'status': 'active'
                 })
                 st.session_state.current_conversation_id = conversation_id
-
-            # Save message
+        
+            # Save the message
             conv_ref = db.collection('conversations').document(conversation_id)
             conv_ref.collection('messages').add({
                 **message,
-                "timestamp": firestore_time
+                "timestamp": firestore.SERVER_TIMESTAMP
             })
+
+            # Get message count and update title 
+            messages = list(conv_ref.collection('messages').get())
+            count = len(messages)
         
-            # Update title only after message is saved
-            new_title = self.generate_title(conversation_id, current_time)
+            # Update conversation title with count
             conv_ref.set({
-                'updated_at': firestore_time,
-                'title': new_title
+                'updated_at': firestore.SERVER_TIMESTAMP,
+                'title': f"{current_time.strftime('%b %d, %Y')} • Conversation [{count}📝]"
             }, merge=True)
         
-            return conversation_id
+        return conversation_id
             
-        except Exception as e:
-            st.error(f"Error saving message: {str(e)}")
-            return conversation_id
+    except Exception as e:
+        st.error(f"Error: {str(e)}")
+        return conversation_id
         
     def login(self, email, password):
         """Authenticate user with Firebase Auth REST API"""
