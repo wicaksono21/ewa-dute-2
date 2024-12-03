@@ -73,7 +73,7 @@ Instructions:
     • Body paragraph development
     • Conclusion strengthening    
 
-4. Review and Feedback : Reference detailed scoring criteria for evaluations
+4. Review and Feedback : {REVIEW_INSTRUCTIONS}
 
 Additional Guidelines:
     • Encourage first-person writing with evidence support
@@ -111,47 +111,26 @@ REVIEW_INSTRUCTIONS = """As you review the essay, please follow these steps and 
 
 # Review Template
 
-## Estimated Grade
+# Estimated Grade
 **Total Score: [X/100]**
 
-## Assessment Areas
+# Assessment Areas:
+1. **Understanding & Analysis ([X]/40):** [Brief 1-2 sentence summary of performance in this area]
+   - **Strength:** [Specific example with quote from essay]
+   - **Suggestions for Improvement:**
+     1. [First specific, actionable suggestion with example]
+     2. [Second specific, actionable suggestion with example]     
 
-1. **Understanding & Analysis ([X]/40)**
-   a. Topic Understanding ([X]/15): [Detailed assessment with specific examples]
-   b. Literature Review ([X]/15): [Detailed assessment with specific examples]
-   c. Creative Thinking ([X]/10): [Detailed assessment with specific examples]
-   
-   **Key Strengths:**
-   - [Specific example with quote from essay]
-   
-   **Areas for Improvement:**
-   1. [Specific, actionable suggestion with example]
-   2. [Second specific suggestion with example]
-   
+2. **Research Approach ([X]/40):** [Brief 1-2 sentence summary of performance in this area]
+   - **Strength:** [Specific example with quote from essay]
+   - **Suggestions for Improvement:**
+     1. [First specific, actionable suggestion with example]
+     2. [Second specific, actionable suggestion with example]     
 
-2. **Research Approach ([X]/40)**
-   a. Method & Planning ([X]/10): [Detailed assessment]
-   b. Analysis & Insight ([X]/15): [Detailed assessment]
-   c. Evidence & Support ([X]/15): [Detailed assessment]
-   
-   **Key Strengths:**
-   - [Specific example with quote from essay]
-   
-   **Areas for Improvement:**
-   1. [Specific, actionable suggestion with example]
-   2. [Second specific suggestion with example]
-   
-3. **Structure & Presentation ([X]/20)**
-   a. Logical Flow ([X]/5): [Assessment]
-   b. Conclusions ([X]/5): [Assessment]
-   c. Organization ([X]/5): [Assessment]
-   d. Presentation ([X]/5): [Assessment]
-   
-   **Key Strengths:**
-   - [Specific example with quote from essay]
-   
-   **Areas for Improvement:**
-   1. [Specific, actionable suggestion with example]
-   2. [Second specific suggestion with example]
+3. **Structure & Presentation ([X]/20):** [Brief 1-2 sentence summary of performance in this area]
+   - **Strength:** [Specific example with quote from essay]
+   - **Suggestions for Improvement:**
+     1. [First specific, actionable suggestion with example]
+     2. [Second specific, actionable suggestion with example]     
 
 Is there any specific area you would like me to elaborate further?"""
