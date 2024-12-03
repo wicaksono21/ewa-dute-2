@@ -134,7 +134,22 @@ class EWA:
         messages = [{"role": "system", "content": SYSTEM_INSTRUCTIONS}]
         
         # Check for review/scoring related keywords
-        review_keywords = ["review", "assess", "grade", "evaluate", "score", "feedback"]
+        review_keywords = [
+            # Grade variations
+            "grade", "grades", "grading", "graded",
+            # Score variations
+            "score", "scores", "scoring", "scored",
+            # Review variations
+            "review", "reviews", "reviewing", "reviewed",
+            # Assess variations
+            "assess", "assesses", "assessing", "assessed", "assessment",
+            # Evaluate variations
+            "evaluate", "evaluates", "evaluating", "evaluated", "evaluation",
+            # Feedback (no common variations)
+            "feedback"
+            # Feedback (no common variations)
+            "rubric"
+        ]
         is_review = any(keyword in prompt.lower() for keyword in review_keywords)
     
         if is_review:            
@@ -142,9 +157,9 @@ class EWA:
                 "role": "system",
                 "content": REVIEW_INSTRUCTIONS            
             })            
-            max_tokens = 1000
+            max_tokens = 5000
         else:            
-            max_tokens = 200
+            max_tokens = 400
 
         # Add conversation history
         if 'messages' in st.session_state:
