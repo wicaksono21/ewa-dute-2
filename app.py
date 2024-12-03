@@ -40,18 +40,16 @@ class EWA:
         return dt.strftime("[%Y-%m-%d %H:%M:%S]")
 
     def generate_title(self, conversation_id, current_time):
-        """Generate title based on full conversation context"""
+        """Generate title based on conversation context with total message count"""
         try:
-            # Get messages and count in one go
             messages = list(self.db.collection('conversations')
                        .document(conversation_id)
                        .collection('messages')
                        .order_by('timestamp')
                        .stream())
         
-            message_count = len(messages)
-            # Get last 5 messages for context
             context = " ".join([msg.to_dict()['content'] for msg in messages[-5:]])
+            total_count = len(messages)
         
             summary = OpenAI(api_key=st.secrets["default"]["OPENAI_API_KEY"]).chat.completions.create(
                 model="gpt-4o-mini",
@@ -63,7 +61,7 @@ class EWA:
                 max_tokens=10
             ).choices[0].message.content.strip()
         
-            return f"{current_time.strftime('%b %d, %Y')} • {summary} [{message_count}📝]"
+            return f"{current_time.strftime('%b %d, %Y')} • {summary} [{total_count}📝]"
         
         except Exception as e:
             return f"{current_time.strftime('%b %d, %Y')} • New Conversation [0📝]"       
@@ -237,11 +235,8 @@ class EWA:
         try:
             if not conversation_id:
                 new_conv_ref = db.collection('conversations').document()
-                conversation_id = new_conv_ref.id
-                
-                if message['role'] == 'user':
-                    title = self.generate_title(message['content'], current_time)
-                    new_conv_ref.set({
+                conversation_id = new_conv_ref.id                              
+                new_conv_ref.set({
                         'user_id': st.session_state.user.uid,
                         'created_at': firestore_time,
                         'updated_at': firestore_time,
@@ -250,17 +245,19 @@ class EWA:
                     })
                     st.session_state.current_conversation_id = conversation_id
 
-            if conversation_id:
-                conv_ref = db.collection('conversations').document(conversation_id)
-                conv_ref.collection('messages').add({
-                    **message,
-                    "timestamp": firestore_time
-                })
-                
-                conv_ref.set({
-                    'updated_at': firestore_time,
-                    'last_message': message['content'][:100]
-                }, merge=True)
+            # Save message
+            conv_ref = db.collection('conversations').document(conversation_id)
+            conv_ref.collection('messages').add({
+                **message,
+                "timestamp": firestore_time
+            })
+        
+            # Generate and update title after saving message
+            title = self.generate_title(conversation_id, current_time)
+            conv_ref.update({
+                'updated_at': firestore_time,
+                'title': title
+            })
             
             return conversation_id
             
