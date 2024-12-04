@@ -129,22 +129,7 @@ class EWA:
         messages = [{"role": "system", "content": SYSTEM_INSTRUCTIONS}]
         
         # Check for review/scoring related keywords
-        review_keywords = [
-            # Grade variations
-            "grade", "grades", "grading", "graded",
-            # Score variations
-            "score", "scores", "scoring", "scored",
-            # Review variations
-            "review", "reviews", "reviewing", "reviewed",
-            # Assess variations
-            "assess", "assesses", "assessing", "assessed", "assessment",
-            # Evaluate variations
-            "evaluate", "evaluates", "evaluating", "evaluated", "evaluation",
-            # Feedback (no common variations)
-            "feedback"
-            # Feedback (no common variations)
-            "rubric"
-        ]
+        review_keywords = ["grade", "score", "review", "assess", "evaluate", "feedback", "rubric"]
         is_review = any(keyword in prompt.lower() for keyword in review_keywords)
     
         if is_review:            
@@ -153,12 +138,24 @@ class EWA:
                 "content": REVIEW_INSTRUCTIONS            
             })            
             max_tokens = 5000
+            context_window = 10  # Larger context window for review tasks
+    else:            
         else:            
             max_tokens = 400
+            context_window = 6   # Smaller context window for regular chat
+
 
         # Add conversation history
         if 'messages' in st.session_state:
-            messages.extend(st.session_state.messages)
+            # Keep only the most recent messages within the context window
+            recent_messages = st.session_state.messages[-context_window:]
+
+            # Ensure we have the initial assistant message
+            if st.session_state.messages and st.session_state.messages[0].get('role') == 'assistant':
+                if recent_messages[0].get('role') != 'assistant':
+                    recent_messages = [st.session_state.messages[0]] + recent_messages[-context_window+1:]
+
+            messages.extend(recent_messages)
 
         # Add current prompt
         messages.append({"role": "user", "content": prompt})
