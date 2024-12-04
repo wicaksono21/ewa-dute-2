@@ -1,4 +1,5 @@
 import streamlit as st
+from streamlit.runtime.caching import cache_data, cache_resource
 import firebase_admin
 from firebase_admin import credentials, auth, firestore
 from openai import OpenAI
@@ -31,7 +32,7 @@ class EWA:
         self.tz = pytz.timezone("Europe/London")
         self.conversations_per_page = 10  # Number of conversations per page
 
-
+    @st.cache_data(ttl=60)  # Cache for 1 minute
     def format_time(self, dt=None):
         """Format datetime with consistent timezone"""
         if isinstance(dt, (datetime, type(firestore.SERVER_TIMESTAMP))):
@@ -39,6 +40,7 @@ class EWA:
         dt = dt or datetime.now(self.tz)
         return dt.strftime("[%Y-%m-%d %H:%M:%S]")           
 
+    @st.cache_data(ttl=300)  # Cache for 5 minutes
     def get_conversations(self, user_id):
         """Retrieve conversation history from Firestore"""
         # Get total conversation count
@@ -199,6 +201,7 @@ class EWA:
         except Exception as e:
             st.error(f"Error processing message: {str(e)}")
 
+    @st.cache_data(ttl=60)  # Cache for 1 minute
     def save_message(self, conversation_id, message):
         """Save message and update title with summary"""
         current_time = datetime.now(self.tz)
