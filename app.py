@@ -1,387 +1,321 @@
 import streamlit as st
-from firebase_admin import firestore, auth
+import firebase_admin
+from firebase_admin import credentials, auth, firestore
+from openai import OpenAI
 from datetime import datetime
 import pytz
-import pandas as pd
+import requests
 
-class AdminDashboard:
-    def __init__(self):
-        self.db = firestore.client()
+# Import configurations
+from stageprompts import INITIAL_ASSISTANT_MESSAGE
+from reviewinstructions import SYSTEM_INSTRUCTIONS, REVIEW_INSTRUCTIONS, DISCLAIMER, SCORING_CRITERIA
+
+# Initialize Firebase
+if not firebase_admin._apps:
+    cred = credentials.Certificate(dict(st.secrets["FIREBASE"]))
+    firebase_admin.initialize_app(cred)
+db = firestore.client()
+
+# Page setup
+st.set_page_config(page_title="DUTE Essay Writing Assistant", layout="wide")
+st.markdown("""
+    <style>
+        .main { max-width: 800px; margin: 0 auto; }
+        .chat-message { padding: 1rem; margin: 0.5rem 0; border-radius: 0.5rem; }
+        #MainMenu, footer { visibility: hidden; }
+    </style>
+""", unsafe_allow_html=True)
+
+class EWA:
+    def __init__(self):        
         self.tz = pytz.timezone("Europe/London")
-        if 'selected_conversations' not in st.session_state:
-            st.session_state.selected_conversations = set()
-        if 'show_batch_delete' not in st.session_state:
-            st.session_state.show_batch_delete = False
+        self.conversations_per_page = 10  # Number of conversations per page
+
+
+    def format_time(self, dt=None):
+        """Format datetime with consistent timezone"""
+        if isinstance(dt, (datetime, type(firestore.SERVER_TIMESTAMP))):
+            return dt.strftime("[%Y-%m-%d %H:%M:%S]")
+        dt = dt or datetime.now(self.tz)
+        return dt.strftime("[%Y-%m-%d %H:%M:%S]")           
+
+    def get_conversations(self, user_id):
+        """Retrieve conversation history from Firestore"""
+        # Get total conversation count
+        count = len(list(db.collection('conversations')
+                        .where('user_id', '==', user_id)
+                        .stream()))
     
-    def handle_selection(self, conv_id, is_selected):
-        """Handle conversation selection without triggering rerun"""
-        if is_selected:
-            st.session_state.selected_conversations.add(conv_id)
-        else:
-            st.session_state.selected_conversations.discard(conv_id)
-        st.session_state.show_batch_delete = len(st.session_state.selected_conversations) > 0
+        # Calculate start position based on current page
+        page = st.session_state.get('page', 0)
+        start = page * 10
+    
+        return db.collection('conversations')\
+                 .where('user_id', '==', user_id)\
+                 .order_by('updated_at', direction=firestore.Query.DESCENDING)\
+                 .offset(start)\
+                 .limit(10)\
+                 .stream(), count > (start + 10)
 
-    def handle_select_all(self, conversations):
-        """Handle select all without triggering rerun"""
-        all_ids = {conv.id for conv in conversations}
-        if len(st.session_state.selected_conversations) == len(all_ids):
-            st.session_state.selected_conversations = set()
-        else:
-            st.session_state.selected_conversations = all_ids
-        st.session_state.show_batch_delete = len(st.session_state.selected_conversations) > 0
-
-    def get_last_login_from_chat(self, user_id):
-        """Get user's last login time from their most recent chat message"""
-        try:
-            # Only get the most recent conversation using orderBy and limit(1)
-            latest_conv = self.db.collection('conversations')\
-                .where('user_id', '==', user_id)\
-                .order_by('updated_at', direction=firestore.Query.DESCENDING)\
-                .limit(1)\
-                .stream()
+    def render_sidebar(self):
+        """Render sidebar with conversation history"""
+        with st.sidebar:
+            st.title("Essay Writing Assistant")
         
-            # Convert to list to check if any conversations exist
-            latest_conv = list(latest_conv)
-            if not latest_conv:
-                return None
+            if st.button("New Session"):
+                user = st.session_state.user
+                st.session_state.clear()
+                st.session_state.user = user
+                st.session_state.logged_in = True
+                st.session_state.messages = [
+                    {**INITIAL_ASSISTANT_MESSAGE, "timestamp": self.format_time()}
+                ]
+                st.session_state.page = 0
+                st.rerun()
+            
+            if st.button("Latest Chat History"):
+                st.session_state.page = 0
+                st.rerun()
+            
+            st.divider()
+        
+            # Initialize page if not exists
+            if 'page' not in st.session_state:
+                st.session_state.page = 0
+            
+            # Get conversations and has_more flag
+            convs, has_more = self.get_conversations(st.session_state.user.uid)
+        
+            # Display conversations
+            for conv in convs:
+                conv_data = conv.to_dict()
+                if st.button(f"{conv_data.get('title', 'Untitled')}", key=conv.id):
+                    messages = db.collection('conversations').document(conv.id)\
+                               .collection('messages').order_by('timestamp').stream()
+                    st.session_state.messages = []
+                    for msg in messages:
+                        msg_dict = msg.to_dict()
+                        if 'timestamp' in msg_dict:
+                            msg_dict['timestamp'] = self.format_time(msg_dict['timestamp'])
+                        st.session_state.messages.append(msg_dict)
+                    st.session_state.current_conversation_id = conv.id
+                    st.rerun()
+            
+            # Simple pagination controls
+            cols = st.columns(2)
+            with cols[0]:
+                if st.session_state.page > 0:
+                    if st.button("Previous"):
+                        st.session_state.page -= 1
+                        st.rerun()
+            with cols[1]:
+                if has_more:
+                    if st.button("Next"):
+                        st.session_state.page += 1
+                        st.rerun()
+    
+    def handle_chat(self, prompt):
+        """Process chat messages and manage conversation flow"""
+        if not prompt:
+            return
 
-            # Use the updated_at timestamp from the conversation document
-            conv_data = latest_conv[0].to_dict()
-            return conv_data.get('updated_at')
+        current_time = datetime.now(self.tz)
+        time_str = self.format_time(current_time)
 
-        except Exception as e:
-            st.error(f"Error getting last login: {e}")
-            return None
+        # Display user message
+        st.chat_message("user").write(f"{time_str} {prompt}")
 
-    def create_user_document(self, user):
-        """Create or update user document in Firestore"""
+        # Build messages context
+        messages = [{"role": "system", "content": SYSTEM_INSTRUCTIONS}]
+        
+        # Check for review/scoring related keywords
+        review_keywords = [
+            # Grade variations
+            "grade", "grades", "grading", "graded",
+            # Score variations
+            "score", "scores", "scoring", "scored",
+            # Review variations
+            "review", "reviews", "reviewing", "reviewed",
+            # Assess variations
+            "assess", "assesses", "assessing", "assessed", "assessment",
+            # Evaluate variations
+            "evaluate", "evaluates", "evaluating", "evaluated", "evaluation",
+            # Feedback (no common variations)
+            "feedback"
+            # Feedback (no common variations)
+            "rubric"
+        ]
+        is_review = any(keyword in prompt.lower() for keyword in review_keywords)
+    
+        if is_review:            
+            messages.append({
+                "role": "system",
+                "content": REVIEW_INSTRUCTIONS            
+            })            
+            max_tokens = 5000
+        else:            
+            max_tokens = 400
+
+        # Add conversation history
+        if 'messages' in st.session_state:
+            messages.extend(st.session_state.messages)
+
+        # Add current prompt
+        messages.append({"role": "user", "content": prompt})
+
         try:
-            user_data = {
-                'email': user.email,
-                'role': 'user',
-                'created_at': firestore.SERVER_TIMESTAMP                
-            }
+            # Get AI response
+            response = OpenAI(api_key=st.secrets["default"]["OPENAI_API_KEY"]).chat.completions.create(
+                model="gpt-4o-mini",
+                messages=messages,
+                temperature=0,
+                max_tokens=max_tokens
+            )
+
+            assistant_content = response.choices[0].message.content
             
-            self.db.collection('users').document(user.uid).set(user_data)
-            return True
-        except Exception as e:
-            st.error(f"Error creating user document: {e}")
-            return False
-            
-    def sync_users(self):
-        """Sync Authentication users with Firestore users collection"""
-        try:
-            auth_users = auth.list_users().iterate_all()
-            synced_count = 0
-            
-            for auth_user in auth_users:
-                user_doc = self.db.collection('users').document(auth_user.uid).get()
+            # Add disclaimer for review responses
+            if is_review:
+                assistant_content = f"{assistant_content}\n\n{DISCLAIMER}"
                 
-                if not user_doc.exists:
-                    self.create_user_document(auth_user)
-                    synced_count += 1
+            st.chat_message("assistant").write(f"{time_str} {assistant_content}")
+
+            # Update session state
+            if 'messages' not in st.session_state:
+                st.session_state.messages = []
+
+            user_message = {"role": "user", "content": prompt, "timestamp": time_str}
+            assistant_msg = {"role": "assistant", "content": assistant_content, "timestamp": time_str}
             
-            return synced_count
+            st.session_state.messages.extend([user_message, assistant_msg])
+
+            # Save to database
+            conversation_id = st.session_state.get('current_conversation_id')
+            conversation_id = self.save_message(conversation_id, 
+                                             {**user_message, "timestamp": current_time})
+            self.save_message(conversation_id, 
+                            {**assistant_msg, "timestamp": current_time})
+
         except Exception as e:
-            st.error(f"Error syncing users: {e}")
-            return 0
-            
-    def check_admin_access(self, email):
-        """Check if user has admin privileges"""
+            st.error(f"Error processing message: {str(e)}")
+
+    def save_message(self, conversation_id, message):
+        """Save message and update title with summary"""
+        current_time = datetime.now(self.tz)
+
         try:
-            user_ref = self.db.collection('users').where('email', '==', email).limit(1).get()
-            if not user_ref:
-                return False
-            user_data = user_ref[0].to_dict()
-            return user_data.get('role') == 'admin'
-        except Exception as e:
-            st.error(f"Error checking admin access: {e}")
-            return False
-    
-    def delete_conversation(self, conversation_id):
-        """Delete a single conversation and all its messages"""
-        try:
-            messages_ref = self.db.collection('conversations').document(conversation_id).collection('messages')
-            self._batch_delete(messages_ref)
-            self.db.collection('conversations').document(conversation_id).delete()
-            return True
-        except Exception as e:
-            st.error(f"Error deleting conversation: {e}")
-            return False
-
-    def delete_user_conversations(self, user_id):
-        """Delete all conversations for a specific user"""
-        try:
-            conversations = self.db.collection('conversations').where('user_id', '==', user_id).stream()
-            for conv in conversations:
-                self.delete_conversation(conv.id)
-            return True
-        except Exception as e:
-            st.error(f"Error deleting user conversations: {e}")
-            return False
-
-    def delete_multiple_conversations(self, conversation_ids):
-        """Delete multiple conversations"""
-        try:
-            for conv_id in conversation_ids:
-                self.delete_conversation(conv_id)
-            return True
-        except Exception as e:
-            st.error(f"Error deleting conversations: {e}")
-            return False
-
-    def _batch_delete(self, collection_ref, batch_size=100):
-        """Helper method to delete collection in batches"""
-        docs = collection_ref.limit(batch_size).stream()
-        deleted = 0
-        for doc in docs:
-            doc.reference.delete()
-            deleted += 1
-        if deleted >= batch_size:
-            return self._batch_delete(collection_ref, batch_size)
-
-    def format_timestamp(self, timestamp):
-        """Helper method to format timestamp consistently"""
-        if isinstance(timestamp, (datetime, type(firestore.SERVER_TIMESTAMP))):
-            try:
-                return timestamp.astimezone(self.tz).strftime("%Y-%m-%d %H:%M:%S")
-            except AttributeError:
-                return 'N/A'
-        return 'N/A'
-    
-    def render_dashboard(self):
-        st.title("Admin Dashboard")
+            # For new conversation
+            if not conversation_id:
+                new_conv_ref = db.collection('conversations').document()
+                conversation_id = new_conv_ref.id
+                new_conv_ref.set({
+                    'user_id': st.session_state.user.uid,
+                    'created_at': firestore.SERVER_TIMESTAMP,
+                    'updated_at': firestore.SERVER_TIMESTAMP,
+                    'title': f"{current_time.strftime('%b %d, %Y')} • New Chat [1📝]",
+                    'status': 'active'
+                })
+                st.session_state.current_conversation_id = conversation_id
         
-        # Sync Users Button
-        if st.button("Sync Authentication Users", key="sync_users_btn"):
-            synced_count = self.sync_users()
-            if synced_count > 0:
-                st.success(f"Successfully synced {synced_count} new users to Firestore")
-            else:
-                st.info("All users are already synced")
-        
-        # Get counts for metrics
-        users_count = len(list(self.db.collection('users').get()))
-        convs = list(self.db.collection('conversations').get())
-        convs_count = len(convs)
-        
-        # Display metrics
-        col1, col2 = st.columns(2)
-        with col1:
-            st.metric("Total Users", users_count)
-        with col2:
-            st.metric("Total Conversations", convs_count)
-               
-        # User Management
-        st.subheader("User Management")
-        users_ref = self.db.collection('users').stream()
-        users = []
-
-        # Process users with proper error handling
-        for doc in users_ref:
-            user_data = doc.to_dict()
-    
-            # Get last login from chat history
-            last_login = self.get_last_login_from_chat(doc.id)
-    
-            users.append({
-                "id": doc.id,
-                "email": user_data.get('email', 'N/A'),
-                "role": user_data.get('role', 'N/A'),
-                "last_login": self.format_timestamp(last_login)
-        })
-        
-         # Create user table with processed data
-        if users:
-            st.table({
-                'Email': [user['email'] for user in users],
-                'Role': [user['role'] for user in users],
-                'Last Active': [user['last_login'] for user in users]
+            # Save message
+            conv_ref = db.collection('conversations').document(conversation_id)
+            conv_ref.collection('messages').add({
+                **message,
+                "timestamp": firestore.SERVER_TIMESTAMP
             })
-        else:
-            st.info("No users found in the database.")
+
+            # Get messages for count and context
+            messages = list(conv_ref.collection('messages').get())
+            count = len(messages)
         
-        # Essay History
-        st.subheader("Essay History")
-        selected_email = st.selectbox(
-            "Select user to view essay history",
-            options=[user.get('email') for user in users],
-            index=None,
-            placeholder="Choose a user...",
-            key="user_select"
-        )
+            # Get last 5 messages for context
+            recent_messages = [msg.to_dict()['content'] for msg in messages[-5:]]
+            context = " ".join(recent_messages)
         
-        if selected_email:
-            selected_user = next((user for user in users if user.get('email') == selected_email), None)
+            # Get summary from GPT
+            summary = OpenAI(api_key=st.secrets["default"]["OPENAI_API_KEY"]).chat.completions.create(
+                model="gpt-4o-mini",
+                messages=[
+                    {"role": "system", "content": "Create a 2-3 word title for this conversation."},
+                    {"role": "user", "content": context}
+                ],
+                temperature=0.3,
+                max_tokens=10
+            ).choices[0].message.content.strip()
+        
+            # Update conversation with summary title and count
+            conv_ref.set({
+                'updated_at': firestore.SERVER_TIMESTAMP,
+                'title': f"{current_time.strftime('%b %d, %Y')} • {summary} [{count}📝]"
+            }, merge=True)
+        
+            return conversation_id
             
-            if selected_user:
-                # Add delete all conversations button with double confirmation
-                if st.button("Delete All User Conversations", 
-                         key=f"delete_all_{selected_user['id']}",
-                         type="primary",
-                         use_container_width=True):
-                    if st.session_state.get('confirm_delete_all'):
-                        if self.delete_user_conversations(selected_user['id']):
-                            st.success("All conversations deleted successfully")
-                            st.rerun()
-                        st.session_state.confirm_delete_all = False
-                    else:
-                        st.session_state.confirm_delete_all = True
-                        st.warning("Are you sure? Click again to confirm deletion of ALL conversations.")
-
-                # Get conversations
-                conversations = list(self.db.collection('conversations')
-                                  .where('user_id', '==', selected_user['id'])
-                                  .order_by('updated_at', direction=firestore.Query.DESCENDING)
-                                  .stream())
-
-                # Show batch operations controls in a fixed position
-                if st.session_state.show_batch_delete:
-                    st.markdown(
-                        f"""
-                        <div style='position: fixed; top: 0; right: 0; padding: 1rem; 
-                        background-color: #262730; z-index: 1000; border-radius: 0.5rem; 
-                        margin: 1rem; box-shadow: 0 0 10px rgba(0,0,0,0.5);'>
-                            <p style='color: white; margin: 0;'>Selected: {len(st.session_state.selected_conversations)}</p>
-                        </div>
-                        """,
-                        unsafe_allow_html=True
-                    )
-                    st.button(
-                        f"🗑️ Delete Selected ({len(st.session_state.selected_conversations)})", 
-                        type="primary",
-                        key="batch_delete",
-                        on_click=lambda: self.delete_multiple_conversations(st.session_state.selected_conversations) 
-                        and st.rerun()
-                    )
-
-                # Select All checkbox
-                if conversations:
-                    st.checkbox("Select All", 
-                              value=len(st.session_state.selected_conversations) == len(conversations),
-                              on_change=self.handle_select_all,
-                              args=(conversations,),
-                              key="select_all")
-
-                # For each conversation
-                for conv in conversations:
-                    conv_data = conv.to_dict()
-                    conv_title = conv_data.get('title', 'Untitled')
-                    
-                    # Checkbox for batch selection
-                    col1, col2 = st.columns([0.1, 0.9])
-                    with col1:
-                        is_selected = conv.id in st.session_state.selected_conversations
-                        if st.checkbox("", key=f"select_{conv.id}", 
-                                     value=is_selected,
-                                     on_change=self.handle_selection,
-                                     args=(conv.id, not is_selected)):
-                            pass  # Selection handled in on_change callback
-                    
-                    with col2:
-                        with st.expander(f"View Essay: {conv_title}", expanded=True):
-                            messages = self.db.collection('conversations').document(conv.id)\
-                                      .collection('messages')\
-                                      .order_by('timestamp')\
-                                      .stream()
-                            
-                            detailed_data = []
-                            prev_msg_time = None
-                            
-                            for msg in messages:
-                                msg_data = msg.to_dict()
-                                timestamp = msg_data.get('timestamp')
-                                
-                                if timestamp:
-                                    date = timestamp.astimezone(self.tz).strftime('%Y-%m-%d')
-                                    time = timestamp.astimezone(self.tz).strftime('%H:%M:%S')
-                                    
-                                    if prev_msg_time:
-                                        curr_seconds = int(time.split(':')[0]) * 3600 + \
-                                                     int(time.split(':')[1]) * 60 + \
-                                                     int(time.split(':')[2])
-                                        prev_seconds = int(prev_msg_time.split(':')[0]) * 3600 + \
-                                                     int(prev_msg_time.split(':')[1]) * 60 + \
-                                                     int(prev_msg_time.split(':')[2])
-                                        response_time = curr_seconds - prev_seconds
-                                    else:
-                                        response_time = 'N/A'
-                                        
-                                    prev_msg_time = time
-                                else:
-                                    date = 'N/A'
-                                    time = 'N/A'
-                                    response_time = 'N/A'
-                                    
-                                content = msg_data.get('content', '')
-                                word_count = len(content.split()) if content else 0
-                                
-                                detailed_data.append({
-                                    'date': date,
-                                    'time': time,
-                                    'role': msg_data.get('role', 'N/A'),
-                                    'content': content,
-                                    'length': word_count,
-                                    'response_time': response_time
-                                })
-                            
-                            if detailed_data:
-                                st.dataframe(
-                                    detailed_data,
-                                    column_config={
-                                        "date": "Date",
-                                        "time": "Time",
-                                        "role": "Role",
-                                        "content": "Content",
-                                        "length": st.column_config.NumberColumn(
-                                            "Length",
-                                            help="Number of words"
-                                        ),
-                                        "response_time": st.column_config.NumberColumn(
-                                            "Response Time (s)",
-                                            help="Time since previous message in seconds"
-                                        )
-                                    },
-                                    hide_index=True,
-                                    key=f"dataframe_{conv.id}"
-                                )
-                                
-                                # Create columns for buttons at the bottom
-                                col1, col2 = st.columns([5,1])
-                                with col1:
-                                    df = pd.DataFrame(detailed_data)
-                                    csv = df.to_csv(index=False).encode('utf-8')
-                                    st.download_button(
-                                        label="Download Chat Log as CSV",
-                                        data=csv,
-                                        file_name=f"{conv_title}_chat_log.csv",
-                                        mime="text/csv",
-                                        key=f"download_{conv.id}"
-                                    )
-                                with col2:
-                                    if st.button("Delete", key=f"delete_{conv.id}", type="primary"):
-                                        if self.delete_conversation(conv.id):
-                                            st.rerun()
-                            else:
-                                st.info("No messages found for this essay.")
-
+        except Exception as e:
+            st.error(f"Error: {str(e)}")
+            return conversation_id
+        
+    def login(self, email, password):
+        """Authenticate user with Firebase Auth REST API"""
+        try:
+            # Firebase Auth REST API endpoint
+            auth_url = f"https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key={st.secrets['default']['apiKey']}"
+        
+            # Request body
+            auth_data = {
+                "email": email,
+                "password": password,
+                "returnSecureToken": True
+            }
+        
+            # Make authentication request
+            response = requests.post(auth_url, json=auth_data)
+            if response.status_code != 200:
+                raise Exception("Authentication failed")
+            
+            # Get user details
+            user = auth.get_user_by_email(email)
+            st.session_state.user = user
+            st.session_state.logged_in = True 
+            st.session_state.messages = [{
+                **INITIAL_ASSISTANT_MESSAGE,
+                "timestamp": self.format_time()
+            }]
+            st.session_state.stage = 'initial'
+            return True
+        
+        except Exception as e:
+            st.error("Login failed")
+            return False
+        
 def main():
-    st.set_page_config(
-        page_title="Essay Writing Assistant - Admin", 
-        layout="wide",
-        initial_sidebar_state="expanded"
-    )
-    
-    if 'user' not in st.session_state:
-        st.error("Please log in first")
+    app = EWA()
+
+    # Login page
+    if not st.session_state.get('logged_in', False):
+        st.title("DUTE Essay Writing Assistant")
+        with st.form("login"):
+            email = st.text_input("Email")
+            password = st.text_input("Password", type="password")
+            if st.form_submit_button("Login", use_container_width=True):
+                if app.login(email, password):
+                    st.rerun()
         return
-        
-    admin = AdminDashboard()
-    if not admin.check_admin_access(st.session_state.user.email):
-        st.error("Access denied. Admin privileges required.")
-        return
-        
-    admin.render_dashboard()
+
+    # Main chat interface
+    st.title("DUTE Essay Writing Assistant")
+    app.render_sidebar()
+
+    # Display message history
+    if 'messages' in st.session_state:
+        for msg in st.session_state.messages:
+            st.chat_message(msg["role"]).write(
+                f"{msg.get('timestamp', '')} {msg['content']}"
+            )
+
+    # Chat input
+    if prompt := st.chat_input("Type your message here..."):
+        app.handle_chat(prompt)
 
 if __name__ == "__main__":
     main()
