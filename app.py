@@ -41,19 +41,19 @@ class EWA:
 
     def get_conversations(self, user_id):
         """Retrieve conversation history from Firestore"""
-        # Get total conversation count
+        # Get total conversation count with minimal fields
         count = len(list(db.collection('conversations')
-                        .where('user_id', '==', user_id)
-                        .select([])
+                        .where(filter=firestore.FieldPath('user_id'), '==', user_id)
+                        .select([])  # Only get IDs, not full documents
                         .stream()))
-    
+
         # Calculate start position based on current page
         page = st.session_state.get('page', 0)
         start = page * 10
 
         # Optimized query: only select needed fields
         conversations = db.collection('conversations')\
-            .where('user_id', '==', user_id)\
+            .where(filter=firestore.FieldPath('user_id'), '==', user_id)\
             .order_by('updated_at', direction=firestore.Query.DESCENDING)\
             .select(['title', 'updated_at'])\
             .offset(start)\
