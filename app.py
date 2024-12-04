@@ -39,13 +39,13 @@ class EWA:
         return data
     
     @st.cache_data(ttl=60)  # Cache for 1 minute
-    def format_time(_self, dt=None):
+    def format_time(_self, _dt=None):
         """Format datetime with consistent timezone"""
-        tz = pytz.timezone("Europe/London")  # Move timezone inside method
-        if isinstance(dt, (datetime, type(firestore.SERVER_TIMESTAMP))):
-            return dt.strftime("[%Y-%m-%d %H:%M:%S]")
-        dt = dt or datetime.now(self.tz)
-        return dt.strftime("[%Y-%m-%d %H:%M:%S]")           
+        tz = pytz.timezone("Europe/London")
+        if isinstance(_dt, (datetime, type(firestore.SERVER_TIMESTAMP))):
+            return _dt.strftime("[%Y-%m-%d %H:%M:%S]")
+        _dt = _dt or datetime.now(tz)
+        return _dt.strftime("[%Y-%m-%d %H:%M:%S]")     
 
     @st.cache_data(ttl=300)  # Cache for 5 minutes
     def get_conversations(_self, user_id):
@@ -82,12 +82,18 @@ class EWA:
         
             if st.button("New Session"):
                 user = st.session_state.user
+                timestamp = datetime.now(self.tz).strftime("[%Y-%m-%d %H:%M:%S]")
+
+                # Create new initial message
+                initial_message = {
+                    **INITIAL_ASSISTANT_MESSAGE,
+                    "timestamp": timestamp
+                }
+                
                 st.session_state.clear()
                 st.session_state.user = user
                 st.session_state.logged_in = True
-                st.session_state.messages = [
-                    {**INITIAL_ASSISTANT_MESSAGE, "timestamp": self.format_time()}
-                ]
+                st.session_state.messages = [initial_message]
                 st.session_state.page = 0
                 st.rerun()
             
@@ -113,7 +119,8 @@ class EWA:
                     for msg in messages:
                         msg_dict = msg.to_dict()
                         if 'timestamp' in msg_dict:
-                            msg_dict['timestamp'] = self.format_time(msg_dict['timestamp'])
+                            timestamp = datetime.now(self.tz).strftime("[%Y-%m-%d %H:%M:%S]")
+                            msg_dict['timestamp'] = timestamp
                         st.session_state.messages.append(msg_dict)
                     st.session_state.current_conversation_id = conv.id
                     st.rerun()
