@@ -33,15 +33,16 @@ class EWA:
         self.conversations_per_page = 10  # Number of conversations per page
 
     @st.cache_data(ttl=60)  # Cache for 1 minute
-    def format_time(self, dt=None):
+    def format_time(_self, dt=None):
         """Format datetime with consistent timezone"""
+        tz = pytz.timezone("Europe/London")  # Move timezone inside method
         if isinstance(dt, (datetime, type(firestore.SERVER_TIMESTAMP))):
             return dt.strftime("[%Y-%m-%d %H:%M:%S]")
         dt = dt or datetime.now(self.tz)
         return dt.strftime("[%Y-%m-%d %H:%M:%S]")           
 
     @st.cache_data(ttl=300)  # Cache for 5 minutes
-    def get_conversations(self, user_id):
+    def get_conversations(_self, user_id):
         """Retrieve conversation history from Firestore"""
         # Get total conversation count
         count = len(list(db.collection('conversations')
@@ -201,11 +202,30 @@ class EWA:
         except Exception as e:
             st.error(f"Error processing message: {str(e)}")
 
-    @st.cache_data(ttl=60)  # Cache for 1 minute
+    
+    # For save_message, we'll create a separate cached helper function
+    @st.cache_data(ttl=60)
+    def _get_conversation_summary(_self, messages, current_time):
+        """Helper function to get conversation summary"""
+        recent_messages = [msg.to_dict()['content'] for msg in messages[-5:]]
+        context = " ".join(recent_messages)
+        
+        summary = OpenAI(api_key=st.secrets["default"]["OPENAI_API_KEY"]).chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[
+                {"role": "system", "content": "Create a 2-3 word title for this conversation."},
+                {"role": "user", "content": context}
+            ],
+            temperature=0.3,
+            max_tokens=10
+        ).choices[0].message.content.strip()
+        
+        return f"{current_time.strftime('%b %d, %Y')} • {summary} [{len(messages)}📝]"
+    
     def save_message(self, conversation_id, message):
         """Save message and update title with summary"""
         current_time = datetime.now(self.tz)
-
+        
         try:
             # For new conversation
             if not conversation_id:
@@ -227,29 +247,14 @@ class EWA:
                 "timestamp": firestore.SERVER_TIMESTAMP
             })
 
-            # Get messages for count and context
+            # Get messages and update title using cached function
             messages = list(conv_ref.collection('messages').get())
-            count = len(messages)
-        
-            # Get last 5 messages for context
-            recent_messages = [msg.to_dict()['content'] for msg in messages[-5:]]
-            context = " ".join(recent_messages)
-        
-            # Get summary from GPT
-            summary = OpenAI(api_key=st.secrets["default"]["OPENAI_API_KEY"]).chat.completions.create(
-                model="gpt-4o-mini",
-                messages=[
-                    {"role": "system", "content": "Create a 2-3 word title for this conversation."},
-                    {"role": "user", "content": context}
-                ],
-                temperature=0.3,
-                max_tokens=10
-            ).choices[0].message.content.strip()
-        
-            # Update conversation with summary title and count
+            title = self._get_conversation_summary(messages, current_time)
+            
+            # Update conversation with summary title
             conv_ref.set({
                 'updated_at': firestore.SERVER_TIMESTAMP,
-                'title': f"{current_time.strftime('%b %d, %Y')} • {summary} [{count}📝]"
+                'title': title
             }, merge=True)
         
             return conversation_id
