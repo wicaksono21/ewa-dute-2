@@ -44,6 +44,7 @@ class EWA:
         # Get total conversation count
         count = len(list(db.collection('conversations')
                         .where('user_id', '==', user_id)
+                         .select([])
                         .stream()))
     
         # Calculate start position based on current page
@@ -53,6 +54,7 @@ class EWA:
         return db.collection('conversations')\
                  .where('user_id', '==', user_id)\
                  .order_by('updated_at', direction=firestore.Query.DESCENDING)\
+                 .select(['title', 'updated_at'])  # Only fetch required fields
                  .offset(start)\
                  .limit(10)\
                  .stream(), count > (start + 10)
@@ -199,6 +201,25 @@ class EWA:
         except Exception as e:
             st.error(f"Error processing message: {str(e)}")
 
+    # Add this method to the EWA class in app.py
+def _get_summary(self, messages):
+    """Generate a short summary title from recent messages"""
+    # Get last 5 messages for context
+    context = " ".join([msg.get('content', '') for msg in messages])
+    
+    # Get summary from GPT
+    summary = OpenAI(api_key=st.secrets["default"]["OPENAI_API_KEY"]).chat.completions.create(
+        model="gpt-4o-mini",
+        messages=[
+            {"role": "system", "content": "Create a 2-3 word title for this conversation."},
+            {"role": "user", "content": context}
+        ],
+        temperature=0.3,
+        max_tokens=10
+    ).choices[0].message.content.strip()
+    
+    return summary
+    
     def save_message(self, conversation_id, message):
         """Save message and update title with summary"""
         current_time = datetime.now(self.tz)
@@ -212,7 +233,7 @@ class EWA:
                     'user_id': st.session_state.user.uid,
                     'created_at': firestore.SERVER_TIMESTAMP,
                     'updated_at': firestore.SERVER_TIMESTAMP,
-                    'title': f"{current_time.strftime('%b %d, %Y')} • New Chat [1📝]",
+                    'title': f"{current_time.strftime('%b %d, %Y')} • New Chat",
                     'status': 'active'
                 })
                 st.session_state.current_conversation_id = conversation_id
@@ -220,35 +241,27 @@ class EWA:
             # Save message
             conv_ref = db.collection('conversations').document(conversation_id)
             conv_ref.collection('messages').add({
-                **message,
-                "timestamp": firestore.SERVER_TIMESTAMP
+                'role': message['role'],
+                'content': message['content'],
+                'timestamp': firestore.SERVER_TIMESTAMP
             })
 
-            # Get messages for count and context
-            messages = list(conv_ref.collection('messages').get())
-            count = len(messages)
+            # Get only needed message fields for summary
+            messages = list(conv_ref.collection('messages')
+                      .order_by('timestamp', direction=firestore.Query.DESCENDING)
+                      .select(['content'])
+                      .limit(5)
+                      .stream())
         
-            # Get last 5 messages for context
-            recent_messages = [msg.to_dict()['content'] for msg in messages[-5:]]
-            context = " ".join(recent_messages)
+            count = len(list(conv_ref.collection('messages').select([]).stream()))
         
-            # Get summary from GPT
-            summary = OpenAI(api_key=st.secrets["default"]["OPENAI_API_KEY"]).chat.completions.create(
-                model="gpt-4o-mini",
-                messages=[
-                    {"role": "system", "content": "Create a 2-3 word title for this conversation."},
-                    {"role": "user", "content": context}
-                ],
-                temperature=0.3,
-                max_tokens=10
-            ).choices[0].message.content.strip()
-        
-            # Update conversation with summary title and count
-            conv_ref.set({
+            # Get summary and update conversation with minimal fields
+            summary = self._get_summary(messages)
+            conv_ref.update({
                 'updated_at': firestore.SERVER_TIMESTAMP,
                 'title': f"{current_time.strftime('%b %d, %Y')} • {summary} [{count}📝]"
-            }, merge=True)
-        
+            })
+    
             return conversation_id
             
         except Exception as e:
