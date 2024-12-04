@@ -221,20 +221,18 @@ class EWA:
     @st.cache_data(ttl=60)
     def _get_conversation_summary(_self, messages, current_time):
         """Helper function to get conversation summary"""
-        recent_messages = [msg.to_dict()['content'] for msg in messages[-5:]]
-        context = " ".join(recent_messages)
-        
-        summary = OpenAI(api_key=st.secrets["default"]["OPENAI_API_KEY"]).chat.completions.create(
+                
+        response = OpenAI(api_key=st.secrets["default"]["OPENAI_API_KEY"]).chat.completions.create(
             model="gpt-4o-mini",
             messages=[
                 {"role": "system", "content": "Create a 2-3 word title for this conversation."},
-                {"role": "user", "content": context}
+                {"role": "user", "content": str(_messages[-5:]) if _messages else "New Chat"}
             ],
             temperature=0.3,
             max_tokens=10
-        ).choices[0].message.content.strip()
-        
-        return f"{current_time.strftime('%b %d, %Y')} • {summary} [{len(messages)}📝]"
+        )
+        summary = response.choices[0].message.content.strip()        
+        return f"{current_time.strftime('%b %d, %Y')} • {summary}"
     
     def save_message(self, conversation_id, message):
         """Save message and update title with summary"""
@@ -294,7 +292,6 @@ def main():
             
             if submitted and email and password:
                 try:
-                    # Firebase Auth REST API endpoint
                     auth_url = f"https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key={st.secrets['default']['apiKey']}"
                     response = requests.post(auth_url, json={
                         "email": email,
@@ -303,40 +300,50 @@ def main():
                     })
                     
                     if response.status_code == 200:
-                        # Set session state first
                         user = auth.get_user_by_email(email)
-                        st.session_state.user = user
-                        st.session_state.logged_in = True
                         
-                        # Initialize messages after setting logged_in state
-                        st.session_state.messages = []
-                        st.session_state.messages.append({
-                            "role": "assistant",
-                            "content": INITIAL_ASSISTANT_MESSAGE["content"],
-                            "timestamp": app.format_time()
-                        })
+                        # Set initial state atomically
+                        state_updates = {
+                            'user': user,
+                            'logged_in': True,
+                            'messages': [{
+                                "role": "assistant",
+                                "content": INITIAL_ASSISTANT_MESSAGE["content"],
+                                "timestamp": app.format_time()
+                            }],
+                            'page': 0
+                        }
                         
-                        # Clear any previous conversation state
-                        if 'current_conversation_id' in st.session_state:
-                            del st.session_state.current_conversation_id
+                        # Update session state all at once
+                        for key, value in state_updates.items():
+                            st.session_state[key] = value
                             
+                        # Force rerun after all states are set
                         st.rerun()
                     else:
                         st.error("Invalid credentials")
                 except Exception as e:
-                    st.error("Login failed")
+                    st.error(f"Login failed: {str(e)}")
         return
 
     # Main chat interface
     st.title("DUTE Essay Writing Assistant")
     app.render_sidebar()
 
+    # Ensure initial message is always present
+    if 'messages' not in st.session_state or not st.session_state.messages:
+        st.session_state.messages = [{
+            "role": "assistant",
+            "content": INITIAL_ASSISTANT_MESSAGE["content"],
+            "timestamp": app.format_time()
+        }]
+        st.rerun()
+
     # Display message history
-    if 'messages' in st.session_state and st.session_state.messages:
-        for msg in st.session_state.messages:
-            st.chat_message(msg["role"]).write(
-                f"{msg.get('timestamp', '')} {msg['content']}"
-            )
+    for msg in st.session_state.messages:
+        st.chat_message(msg["role"]).write(
+            f"{msg.get('timestamp', '')} {msg['content']}"
+        )
 
     # Chat input
     if prompt := st.chat_input("Type your message here..."):
