@@ -43,7 +43,7 @@ class EWA:
         """Retrieve conversation history from Firestore"""
         # Get total conversation count with minimal fields
         count = len(list(db.collection('conversations')
-                        .where(filter=firestore.FieldPath('user_id'), '==', user_id)
+                        .where('user_id', '==', user_id)
                         .select([])  # Only get IDs, not full documents
                         .stream()))
 
@@ -53,7 +53,7 @@ class EWA:
 
         # Optimized query: only select needed fields
         conversations = db.collection('conversations')\
-            .where(filter=firestore.FieldPath('user_id'), '==', user_id)\
+            .where('user_id', '==', user_id)\
             .order_by('updated_at', direction=firestore.Query.DESCENDING)\
             .select(['title', 'updated_at'])\
             .offset(start)\
