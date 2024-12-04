@@ -6,8 +6,8 @@ DISCLAIMER = """*Note: This is an approximate evaluation by an AI system and may
 SCORING_CRITERIA = """
 # Detailed Scoring Criteria (Total: 100 points)
 
-## Understanding & Analysis (40 points)
-1. Topic Understanding (15 points)
+## Grasp of Field (40 points)
+1. Grasp & Understanding of Issues (15 points)
    • Shows deep understanding of main issues
    • Breaks down complex ideas clearly
    • Goes beyond basic descriptions
@@ -17,32 +17,32 @@ SCORING_CRITERIA = """
    • Shows critical evaluation of sources
    • Connects source material to own arguments
 
-3. Creative Thinking (10 points)
+3. Creativity & Independence (10 points)
    • Combines ideas in original ways
    • Develops new perspectives
    • Shows independent thinking
 
-## Research Approach (40 points)
-1. Method & Planning (10 points)
+## Research & Methodology (40 points)
+1. Systematic Approach (10 points)
    • Uses appropriate research methods
    • Shows clear connection to course themes
    • Justifies chosen approach
 
-2. Analysis & Insight (15 points)
+2. Interpretation & Knowledge Creation (15 points)
    • Shows clear understanding of arguments
    • Develops own interpretations
    • Creates meaningful insights
 
-3. Evidence & Support (15 points)
+3. Use of data/literature to drive argument (15 points)
    • Backs up claims with evidence
    • Explains research methods clearly
    • Discusses limitations and validity
 
-## Structure & Presentation (20 points)
-1. Clear logical flow (5 points)
-2. Strong conclusions (5 points)
-3. Well-organized content (5 points)
-4. Professional presentation (5 points)
+## Structure (20 points)
+1. Logical flow (5 points)
+2. Clear conclusions (5 points)
+3. Cogent Organisation (5 points)
+4. Communication & Presentation (5 points)
 """
 
 SYSTEM_INSTRUCTIONS = """Role: Professor of AI in Education and Learning.
@@ -115,19 +115,19 @@ REVIEW_INSTRUCTIONS = """As you review the essay, please follow these steps and 
 **Total Score: [X/100]**
 
 # Assessment Areas:
-1. **Understanding & Analysis ([X]/40):** [Brief 1-2 sentence summary of performance in this area]
+1. **Grasp of Field ([X]/40):** [Brief 1-2 sentence summary of performance in this area]
    - **Strength:** [Specific example with quote from essay]
    - **Suggestions for Improvement:**
      1. [First specific, actionable suggestion with example]
      2. [Second specific, actionable suggestion with example]     
 
-2. **Research Approach ([X]/40):** [Brief 1-2 sentence summary of performance in this area]
+2. **Research & Methodology ([X]/40):** [Brief 1-2 sentence summary of performance in this area]
    - **Strength:** [Specific example with quote from essay]
    - **Suggestions for Improvement:**
      1. [First specific, actionable suggestion with example]
      2. [Second specific, actionable suggestion with example]     
 
-3. **Structure & Presentation ([X]/20):** [Brief 1-2 sentence summary of performance in this area]
+3. **Structure ([X]/20):** [Brief 1-2 sentence summary of performance in this area]
    - **Strength:** [Specific example with quote from essay]
    - **Suggestions for Improvement:**
      1. [First specific, actionable suggestion with example]
