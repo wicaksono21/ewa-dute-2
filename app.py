@@ -221,20 +221,20 @@ class EWA:
     @st.cache_data(ttl=60)
     def _get_conversation_summary(_self, _message_str: str, _timestamp: str) -> str:
         """Helper function to get conversation summary"""
-                
-        response = OpenAI(api_key=st.secrets["default"]["OPENAI_API_KEY"]).chat.completions.create(
-            model="gpt-4o-mini",
-            messages=[
-                {"role": "system", "content": "Create a 2-3 word title for this conversation."},
-                {"role": "user", "content": _message_str}
-            ],
-            temperature=0.3,
-            max_tokens=10
-        )
-        summary = response.choices[0].message.content.strip()        
-        return f"{_timestamp} • {summary}"
-    except Exception as e:
-        return f"{_timestamp} • New Chat"
+        try:        
+            response = OpenAI(api_key=st.secrets["default"]["OPENAI_API_KEY"]).chat.completions.create(
+                model="gpt-4o-mini",
+                messages=[
+                    {"role": "system", "content": "Create a 2-3 word title for this conversation."},
+                    {"role": "user", "content": _message_str}
+                ],
+                temperature=0.3,
+                max_tokens=10
+            )
+            summary = response.choices[0].message.content.strip()        
+            return f"{_timestamp} • {summary}"
+        except Exception as e:
+            return f"{_timestamp} • New Chat"
     
     def save_message(self, conversation_id, message):
         """Save message and update title with summary"""
