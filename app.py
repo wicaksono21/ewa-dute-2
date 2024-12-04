@@ -278,9 +278,11 @@ class EWA:
             return conversation_id       
             
 def main():
-    # Initialize the EWA instance at the start
+    # Initialize app at the start
     if 'app' not in st.session_state:
         st.session_state.app = EWA()
+    
+    app = st.session_state.app
 
     # Login handling
     if not st.session_state.get('logged_in', False):
@@ -301,13 +303,23 @@ def main():
                     })
                     
                     if response.status_code == 200:
+                        # Set session state first
                         user = auth.get_user_by_email(email)
                         st.session_state.user = user
                         st.session_state.logged_in = True
-                        st.session_state.messages = [{
-                            **INITIAL_ASSISTANT_MESSAGE,
-                            "timestamp": st.session_state.app.format_time()
-                        }]
+                        
+                        # Initialize messages after setting logged_in state
+                        st.session_state.messages = []
+                        st.session_state.messages.append({
+                            "role": "assistant",
+                            "content": INITIAL_ASSISTANT_MESSAGE["content"],
+                            "timestamp": app.format_time()
+                        })
+                        
+                        # Clear any previous conversation state
+                        if 'current_conversation_id' in st.session_state:
+                            del st.session_state.current_conversation_id
+                            
                         st.rerun()
                     else:
                         st.error("Invalid credentials")
@@ -316,12 +328,11 @@ def main():
         return
 
     # Main chat interface
-    app = st.session_state.app
     st.title("DUTE Essay Writing Assistant")
     app.render_sidebar()
 
     # Display message history
-    if 'messages' in st.session_state:
+    if 'messages' in st.session_state and st.session_state.messages:
         for msg in st.session_state.messages:
             st.chat_message(msg["role"]).write(
                 f"{msg.get('timestamp', '')} {msg['content']}"
