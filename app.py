@@ -138,8 +138,7 @@ class EWA:
                 "content": REVIEW_INSTRUCTIONS            
             })            
             max_tokens = 5000
-            context_window = 10  # Larger context window for review tasks
-    else:            
+            context_window = 10  # Larger context window for review tasks         
         else:            
             max_tokens = 400
             context_window = 6   # Smaller context window for regular chat
