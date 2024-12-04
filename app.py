@@ -290,13 +290,23 @@ class EWA:
                 "returnSecureToken": True
             }
         
-            # Make authentication request
+            # Make authentication request with detailed error handling
             response = requests.post(auth_url, json=auth_data)
+        
+            # Print response for debugging
+            print(f"Auth Response Status: {response.status_code}")
+            print(f"Auth Response Content: {response.text}")
+        
             if response.status_code != 200:
-                raise Exception("Authentication failed")
+                error_data = response.json()
+                error_message = error_data.get('error', {}).get('message', 'Unknown error')
+                st.error(f"Authentication failed: {error_message}")
+                return False
             
             # Get user details
             user = auth.get_user_by_email(email)
+        
+            # Set session state
             st.session_state.user = user
             st.session_state.logged_in = True 
             st.session_state.messages = [{
@@ -304,11 +314,19 @@ class EWA:
                 "timestamp": self.format_time()
             }]
             st.session_state.stage = 'initial'
+        
             return True
         
-        except Exception as e:
-            st.error("Login failed")
-            return False
+    except requests.exceptions.RequestException as e:
+        st.error(f"Network error: {str(e)}")
+        return False
+    except auth.AuthError as e:
+        st.error(f"Firebase Auth error: {str(e)}")
+        return False
+    except Exception as e:
+        st.error(f"Unexpected error: {str(e)}")
+        print(f"Full error details: {str(e)}")  # For debugging
+        return False
         
 def main():
     app = EWA()
