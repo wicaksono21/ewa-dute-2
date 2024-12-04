@@ -91,9 +91,9 @@ class EWA:
             st.session_state.stage = 'initial'
             return True
     
-    except Exception as e:
-        st.error("Login failed")
-        return False
+        except Exception as e:
+            st.error("Login failed")
+            return False
     
     def render_sidebar(self):
         """Render sidebar with conversation history"""
