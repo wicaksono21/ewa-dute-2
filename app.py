@@ -111,9 +111,11 @@ class EWA:
             convs, has_more = self.get_conversations(st.session_state.user.uid)
         
             # Display conversations
-            for conv in convs:                
-                if st.button(f"{conv.get('title', 'Untitled')}", key=conv['id']):
-                    messages = db.collection('conversations').document(conv['id'])\
+            for conv in convs:   
+                # Use dictionary access for ID and title
+                conv_id = conv.get('id')  # Changed from conv.id
+                if st.button(f"{conv.get('title', 'Untitled')}",key=conv_id):
+                    messages = db.collection('conversations').document(conv_id)\
                                .collection('messages').order_by('timestamp').stream()
                     st.session_state.messages = []
                     for msg in messages:
