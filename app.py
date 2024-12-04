@@ -275,75 +275,61 @@ class EWA:
             st.error(f"Error: {str(e)}")
             return conversation_id       
             
-def main():
-    # Initialize app at the start
-    if 'app' not in st.session_state:
-        st.session_state.app = EWA()
-    
-    app = st.session_state.app
+def perform_login(email, password):
+    """Standalone login function"""
+    try:
+        auth_url = f"https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key={st.secrets['default']['apiKey']}"
+        response = requests.post(auth_url, json={
+            "email": email,
+            "password": password,
+            "returnSecureToken": True
+        })
+        
+        if response.status_code == 200:
+            user = auth.get_user_by_email(email)
+            st.session_state.user = user
+            st.session_state.logged_in = True
+            st.session_state.messages = [{
+                "role": "assistant",
+                "content": INITIAL_ASSISTANT_MESSAGE["content"],
+                "timestamp": datetime.now(pytz.timezone("Europe/London")).strftime("[%Y-%m-%d %H:%M:%S]")
+            }]
+            return True
+        return False
+    except Exception as e:
+        st.error(f"Login error: {str(e)}")
+        return False
 
-    # Login handling
+def main():
+    # Login page
     if not st.session_state.get('logged_in', False):
         st.title("DUTE Essay Writing Assistant")
         with st.form("login"):
             email = st.text_input("Email")
             password = st.text_input("Password", type="password")
-            submitted = st.form_submit_button("Login", use_container_width=True)
-            
-            if submitted and email and password:
-                try:
-                    auth_url = f"https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key={st.secrets['default']['apiKey']}"
-                    response = requests.post(auth_url, json={
-                        "email": email,
-                        "password": password,
-                        "returnSecureToken": True
-                    })
-                    
-                    if response.status_code == 200:
-                        user = auth.get_user_by_email(email)
-                        
-                        # Set initial state atomically
-                        state_updates = {
-                            'user': user,
-                            'logged_in': True,
-                            'messages': [{
-                                "role": "assistant",
-                                "content": INITIAL_ASSISTANT_MESSAGE["content"],
-                                "timestamp": app.format_time()
-                            }],
-                            'page': 0
-                        }
-                        
-                        # Update session state all at once
-                        for key, value in state_updates.items():
-                            st.session_state[key] = value
-                            
-                        # Force rerun after all states are set
-                        st.rerun()
-                    else:
-                        st.error("Invalid credentials")
-                except Exception as e:
-                    st.error(f"Login failed: {str(e)}")
+            if st.form_submit_button("Login", use_container_width=True):
+                if perform_login(email, password):
+                    st.rerun()
+                else:
+                    st.error("Login failed")
         return
+
+    # Initialize app only after successful login
+    if 'app' not in st.session_state:
+        st.session_state.app = EWA()
+    
+    app = st.session_state.app
 
     # Main chat interface
     st.title("DUTE Essay Writing Assistant")
     app.render_sidebar()
 
-    # Ensure initial message is always present
-    if 'messages' not in st.session_state or not st.session_state.messages:
-        st.session_state.messages = [{
-            "role": "assistant",
-            "content": INITIAL_ASSISTANT_MESSAGE["content"],
-            "timestamp": app.format_time()
-        }]
-        st.rerun()
-
     # Display message history
-    for msg in st.session_state.messages:
-        st.chat_message(msg["role"]).write(
-            f"{msg.get('timestamp', '')} {msg['content']}"
-        )
+    if 'messages' in st.session_state:
+        for msg in st.session_state.messages:
+            st.chat_message(msg["role"]).write(
+                f"{msg.get('timestamp', '')} {msg['content']}"
+            )
 
     # Chat input
     if prompt := st.chat_input("Type your message here..."):
