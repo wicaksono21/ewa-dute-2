@@ -41,60 +41,22 @@ class EWA:
 
     def get_conversations(self, user_id):
         """Retrieve conversation history from Firestore"""
-        # Get total conversation count with minimal fields
+        # Get total conversation count
         count = len(list(db.collection('conversations')
                         .where('user_id', '==', user_id)
-                        .select([])  # Only get IDs, not full documents
                         .stream()))
-
+    
         # Calculate start position based on current page
         page = st.session_state.get('page', 0)
         start = page * 10
+    
+        return db.collection('conversations')\
+                 .where('user_id', '==', user_id)\
+                 .order_by('updated_at', direction=firestore.Query.DESCENDING)\
+                 .offset(start)\
+                 .limit(10)\
+                 .stream(), count > (start + 10)
 
-        # Optimized query: only select needed fields
-        conversations = db.collection('conversations')\
-            .where('user_id', '==', user_id)\
-            .order_by('updated_at', direction=firestore.Query.DESCENDING)\
-            .select(['title', 'updated_at'])\
-            .offset(start)\
-            .limit(10)\
-            .stream()
-    
-        return conversations, count > (start + 10)
-                 
-    def login(self, email, password):
-        """Authenticate user with Firebase Auth REST API"""
-        try:
-            # Firebase Auth REST API endpoint
-            auth_url = f"https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key={st.secrets['default']['apiKey']}"
-    
-            # Request body
-            auth_data = {
-                "email": email,
-                "password": password,
-                "returnSecureToken": True
-            }
-    
-            # Make authentication request
-            response = requests.post(auth_url, json=auth_data)
-            if response.status_code != 200:
-                raise Exception("Authentication failed")
-        
-            # Get user details
-            user = auth.get_user_by_email(email)
-            st.session_state.user = user
-            st.session_state.logged_in = True 
-            st.session_state.messages = [{
-                **INITIAL_ASSISTANT_MESSAGE,
-                "timestamp": self.format_time()
-            }]
-            st.session_state.stage = 'initial'
-            return True
-    
-        except Exception as e:
-            st.error("Login failed")
-            return False
-    
     def render_sidebar(self):
         """Render sidebar with conversation history"""
         with st.sidebar:
@@ -237,25 +199,6 @@ class EWA:
         except Exception as e:
             st.error(f"Error processing message: {str(e)}")
 
-    # Add this method to the EWA class in app.py
-    def _get_summary(self, messages):
-        """Generate a short summary title from recent messages"""
-        # Get last 5 messages for context
-        context = " ".join([msg.get('content', '') for msg in messages])
-    
-        # Get summary from GPT
-        summary = OpenAI(api_key=st.secrets["default"]["OPENAI_API_KEY"]).chat.completions.create(
-            model="gpt-4o-mini",
-            messages=[
-                {"role": "system", "content": "Create a 2-3 word title for this conversation."},
-                {"role": "user", "content": context}
-            ],
-            temperature=0.3,
-            max_tokens=10
-        ).choices[0].message.content.strip()
-    
-        return summary
-    
     def save_message(self, conversation_id, message):
         """Save message and update title with summary"""
         current_time = datetime.now(self.tz)
@@ -269,7 +212,7 @@ class EWA:
                     'user_id': st.session_state.user.uid,
                     'created_at': firestore.SERVER_TIMESTAMP,
                     'updated_at': firestore.SERVER_TIMESTAMP,
-                    'title': f"{current_time.strftime('%b %d, %Y')} • New Chat",
+                    'title': f"{current_time.strftime('%b %d, %Y')} • New Chat [1📝]",
                     'status': 'active'
                 })
                 st.session_state.current_conversation_id = conversation_id
@@ -277,33 +220,73 @@ class EWA:
             # Save message
             conv_ref = db.collection('conversations').document(conversation_id)
             conv_ref.collection('messages').add({
-                'role': message['role'],
-                'content': message['content'],
-                'timestamp': firestore.SERVER_TIMESTAMP
+                **message,
+                "timestamp": firestore.SERVER_TIMESTAMP
             })
 
-            # Get only needed message fields for summary
-            messages = list(conv_ref.collection('messages')
-                      .order_by('timestamp', direction=firestore.Query.DESCENDING)
-                      .select(['content'])
-                      .limit(5)
-                      .stream())
+            # Get messages for count and context
+            messages = list(conv_ref.collection('messages').get())
+            count = len(messages)
         
-            count = len(list(conv_ref.collection('messages').select([]).stream()))
+            # Get last 5 messages for context
+            recent_messages = [msg.to_dict()['content'] for msg in messages[-5:]]
+            context = " ".join(recent_messages)
         
-            # Get summary and update conversation with minimal fields
-            summary = self._get_summary(messages)
-            conv_ref.update({
+            # Get summary from GPT
+            summary = OpenAI(api_key=st.secrets["default"]["OPENAI_API_KEY"]).chat.completions.create(
+                model="gpt-4o-mini",
+                messages=[
+                    {"role": "system", "content": "Create a 2-3 word title for this conversation."},
+                    {"role": "user", "content": context}
+                ],
+                temperature=0.3,
+                max_tokens=10
+            ).choices[0].message.content.strip()
+        
+            # Update conversation with summary title and count
+            conv_ref.set({
                 'updated_at': firestore.SERVER_TIMESTAMP,
                 'title': f"{current_time.strftime('%b %d, %Y')} • {summary} [{count}📝]"
-            })
-    
+            }, merge=True)
+        
             return conversation_id
             
         except Exception as e:
             st.error(f"Error: {str(e)}")
-            return conversation_id       
-    
+            return conversation_id
+        
+    def login(self, email, password):
+        """Authenticate user with Firebase Auth REST API"""
+        try:
+            # Firebase Auth REST API endpoint
+            auth_url = f"https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key={st.secrets['default']['apiKey']}"
+        
+            # Request body
+            auth_data = {
+                "email": email,
+                "password": password,
+                "returnSecureToken": True
+            }
+        
+            # Make authentication request
+            response = requests.post(auth_url, json=auth_data)
+            if response.status_code != 200:
+                raise Exception("Authentication failed")
+            
+            # Get user details
+            user = auth.get_user_by_email(email)
+            st.session_state.user = user
+            st.session_state.logged_in = True 
+            st.session_state.messages = [{
+                **INITIAL_ASSISTANT_MESSAGE,
+                "timestamp": self.format_time()
+            }]
+            st.session_state.stage = 'initial'
+            return True
+        
+        except Exception as e:
+            st.error("Login failed")
+            return False
         
 def main():
     app = EWA()
