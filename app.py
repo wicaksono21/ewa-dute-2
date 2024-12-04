@@ -278,11 +278,11 @@ class EWA:
             return conversation_id       
             
 def main():
-    """Main function for the application"""
-    # Create an instance of EWA
-    app = EWA()
+    # Initialize the EWA instance at the start
+    if 'app' not in st.session_state:
+        st.session_state.app = EWA()
 
-    # Login page
+    # Login handling
     if not st.session_state.get('logged_in', False):
         st.title("DUTE Essay Writing Assistant")
         with st.form("login"):
@@ -290,45 +290,33 @@ def main():
             password = st.text_input("Password", type="password")
             submitted = st.form_submit_button("Login", use_container_width=True)
             
-            if submitted:
+            if submitted and email and password:
                 try:
                     # Firebase Auth REST API endpoint
                     auth_url = f"https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key={st.secrets['default']['apiKey']}"
-                    
-                    # Request body
-                    auth_data = {
+                    response = requests.post(auth_url, json={
                         "email": email,
                         "password": password,
                         "returnSecureToken": True
-                    }
+                    })
                     
-                    # Make authentication request
-                    response = requests.post(auth_url, json=auth_data)
-                    
-                    if response.status_code != 200:
-                        error_data = response.json()
-                        error_message = error_data.get('error', {}).get('message', 'Unknown error')
-                        st.error(f"Authentication failed: {error_message}")
-                        return False
-                        
-                    # Get user details
-                    user = auth.get_user_by_email(email)
-                    st.session_state.user = user
-                    st.session_state.logged_in = True 
-                    st.session_state.messages = [{
-                        **INITIAL_ASSISTANT_MESSAGE,
-                        "timestamp": app.format_time()
-                    }]
-                    st.session_state.stage = 'initial'
-                    st.rerun()
-                    
-                except requests.exceptions.RequestException as e:
-                    st.error(f"Network error: {str(e)}")
+                    if response.status_code == 200:
+                        user = auth.get_user_by_email(email)
+                        st.session_state.user = user
+                        st.session_state.logged_in = True
+                        st.session_state.messages = [{
+                            **INITIAL_ASSISTANT_MESSAGE,
+                            "timestamp": st.session_state.app.format_time()
+                        }]
+                        st.rerun()
+                    else:
+                        st.error("Invalid credentials")
                 except Exception as e:
-                    st.error(f"Login failed: {str(e)}")
+                    st.error("Login failed")
         return
 
     # Main chat interface
+    app = st.session_state.app
     st.title("DUTE Essay Writing Assistant")
     app.render_sidebar()
 
