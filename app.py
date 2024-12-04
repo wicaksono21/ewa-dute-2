@@ -89,7 +89,7 @@ class EWA:
                 "timestamp": self.format_time()
             }]
             st.session_state.stage = 'initial'
-        return True
+            return True
     
     except Exception as e:
         st.error("Login failed")
