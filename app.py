@@ -111,20 +111,17 @@ class EWA:
             convs, has_more = self.get_conversations(st.session_state.user.uid)
         
             # Display conversations
-            for conv in convs:   
-                # Use dictionary access for ID and title
-                conv_id = conv.get('id')  # Changed from conv.id
-                if st.button(f"{conv.get('title', 'Untitled')}",key=conv_id):
-                    messages = db.collection('conversations').document(conv_id)\
+            for conv in convs:
+                if st.button(f"{conv.get('title', 'Untitled')}", key=conv['id']):
+                    messages = db.collection('conversations').document(conv['id'])\
                                .collection('messages').order_by('timestamp').stream()
                     st.session_state.messages = []
                     for msg in messages:
                         msg_dict = msg.to_dict()
                         if 'timestamp' in msg_dict:
-                            timestamp = datetime.now(self.tz).strftime("[%Y-%m-%d %H:%M:%S]")
-                            msg_dict['timestamp'] = timestamp
+                            msg_dict['timestamp'] = self.format_time(msg_dict['timestamp'])
                         st.session_state.messages.append(msg_dict)
-                    st.session_state.current_conversation_id = conv.id
+                    st.session_state.current_conversation_id = conv['id']
                     st.rerun()
             
             # Simple pagination controls
@@ -167,8 +164,8 @@ class EWA:
             # Evaluate variations
             "evaluate", "evaluates", "evaluating", "evaluated", "evaluation",
             # Feedback (no common variations)
-            "feedback"
-            # Feedback (no common variations)
+            "feedback",
+            # Rubric (no common variations)
             "rubric"
         ]
         is_review = any(keyword in prompt.lower() for keyword in review_keywords)
@@ -225,8 +222,6 @@ class EWA:
         except Exception as e:
             st.error(f"Error processing message: {str(e)}")
 
-    
-    # For save_message, we'll create a separate cached helper function
     @st.cache_data(ttl=60)
     def _get_conversation_summary(_self, _message_str: str, _timestamp: str) -> str:
         """Helper function to get conversation summary"""
@@ -307,8 +302,7 @@ def perform_login(email, password):
             st.session_state.user = user
             st.session_state.logged_in = True
             st.session_state.messages = [{
-                "role": "assistant",
-                "content": INITIAL_ASSISTANT_MESSAGE["content"],
+                **INITIAL_ASSISTANT_MESSAGE,
                 "timestamp": datetime.now(pytz.timezone("Europe/London")).strftime("[%Y-%m-%d %H:%M:%S]")
             }]
             return True
