@@ -333,8 +333,9 @@ def main():
         with st.form("login"):
             email = st.text_input("Email")
             password = st.text_input("Password", type="password")
-            if st.form_submit_button("Login", use_container_width=True):
-                if app.login(email, password):
+            submit = st.form_submit_button("Login", use_container_width=True)
+            if submit:
+                if app.login(email, password):  # Use the app instance to call login
                     st.rerun()
         return
 
