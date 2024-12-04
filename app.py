@@ -32,6 +32,12 @@ class EWA:
         self.tz = pytz.timezone("Europe/London")
         self.conversations_per_page = 10  # Number of conversations per page
 
+    def _convert_conversation_to_dict(self, conv):
+        """Helper method to convert Firestore conversation to dictionary"""
+        data = conv.to_dict()
+        data['id'] = conv.id
+        return data
+    
     @st.cache_data(ttl=60)  # Cache for 1 minute
     def format_time(_self, dt=None):
         """Format datetime with consistent timezone"""
@@ -53,12 +59,21 @@ class EWA:
         page = st.session_state.get('page', 0)
         start = page * 10
     
-        return db.collection('conversations')\
-                 .where('user_id', '==', user_id)\
-                 .order_by('updated_at', direction=firestore.Query.DESCENDING)\
-                 .offset(start)\
-                 .limit(10)\
-                 .stream(), count > (start + 10)
+        # Get conversations and convert to list of dictionaries
+        conversations = list(query
+            .order_by('updated_at', direction=firestore.Query.DESCENDING)
+            .offset(start)
+            .limit(10)
+            .stream())
+            
+        # Convert to serializable format
+        conv_list = [_self._convert_conversation_to_dict(conv) for conv in conversations]
+            
+        return conv_list, count > (start + 10)
+            
+    except Exception as e:
+        st.error(f"Error fetching conversations: {str(e)}")
+        return [], False
 
     def render_sidebar(self):
         """Render sidebar with conversation history"""
@@ -90,10 +105,9 @@ class EWA:
             convs, has_more = self.get_conversations(st.session_state.user.uid)
         
             # Display conversations
-            for conv in convs:
-                conv_data = conv.to_dict()
-                if st.button(f"{conv_data.get('title', 'Untitled')}", key=conv.id):
-                    messages = db.collection('conversations').document(conv.id)\
+            for conv in convs:                
+                if st.button(f"{conv.get('title', 'Untitled')}", key=conv['id']):
+                    messages = db.collection('conversations').document(conv['id'])\
                                .collection('messages').order_by('timestamp').stream()
                     st.session_state.messages = []
                     for msg in messages:
