@@ -319,13 +319,9 @@ class EWA:
         
         except requests.exceptions.RequestException as e:
             st.error(f"Network error: {str(e)}")
-            return False
-        except auth.AuthError as e:
-            st.error(f"Firebase Auth error: {str(e)}")
-            return False
+            return False       
         except Exception as e:
-            st.error(f"Unexpected error: {str(e)}")
-            print(f"Full error details: {str(e)}")  # For debugging
+            st.error(f"Login failed: {str(e)}")        
             return False
         
 def main():
