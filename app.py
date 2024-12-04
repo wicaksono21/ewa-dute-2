@@ -238,23 +238,23 @@ class EWA:
             st.error(f"Error processing message: {str(e)}")
 
     # Add this method to the EWA class in app.py
-def _get_summary(self, messages):
-    """Generate a short summary title from recent messages"""
-    # Get last 5 messages for context
-    context = " ".join([msg.get('content', '') for msg in messages])
+    def _get_summary(self, messages):
+        """Generate a short summary title from recent messages"""
+        # Get last 5 messages for context
+        context = " ".join([msg.get('content', '') for msg in messages])
     
-    # Get summary from GPT
-    summary = OpenAI(api_key=st.secrets["default"]["OPENAI_API_KEY"]).chat.completions.create(
-        model="gpt-4o-mini",
-        messages=[
-            {"role": "system", "content": "Create a 2-3 word title for this conversation."},
-            {"role": "user", "content": context}
-        ],
-        temperature=0.3,
-        max_tokens=10
-    ).choices[0].message.content.strip()
+        # Get summary from GPT
+        summary = OpenAI(api_key=st.secrets["default"]["OPENAI_API_KEY"]).chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[
+                {"role": "system", "content": "Create a 2-3 word title for this conversation."},
+                {"role": "user", "content": context}
+            ],
+            temperature=0.3,
+            max_tokens=10
+        ).choices[0].message.content.strip()
     
-    return summary
+        return summary
     
     def save_message(self, conversation_id, message):
         """Save message and update title with summary"""
