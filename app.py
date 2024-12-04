@@ -50,15 +50,18 @@ class EWA:
         # Calculate start position based on current page
         page = st.session_state.get('page', 0)
         start = page * 10
-    
-        return db.collection('conversations')\
-                 .where('user_id', '==', user_id)\
-                 .order_by('updated_at', direction=firestore.Query.DESCENDING)\
-                 .select(['title', 'updated_at'])  # Only fetch required fields
-                 .offset(start)\
-                 .limit(10)\
-                 .stream(), count > (start + 10)
 
+        # Optimized query: only select needed fields
+        conversations = db.collection('conversations')\
+            .where('user_id', '==', user_id)\
+            .order_by('updated_at', direction=firestore.Query.DESCENDING)\
+            .select(['title', 'updated_at'])\
+            .offset(start)\
+            .limit(10)\
+            .stream()
+    
+        return conversations, count > (start + 10)
+                 
     def render_sidebar(self):
         """Render sidebar with conversation history"""
         with st.sidebar:
