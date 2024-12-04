@@ -44,7 +44,7 @@ class EWA:
         # Get total conversation count
         count = len(list(db.collection('conversations')
                         .where('user_id', '==', user_id)
-                         .select([])
+                        .select([])
                         .stream()))
     
         # Calculate start position based on current page
