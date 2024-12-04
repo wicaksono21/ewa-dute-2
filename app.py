@@ -275,56 +275,11 @@ class EWA:
             
         except Exception as e:
             st.error(f"Error: {str(e)}")
-            return conversation_id
-        
-    def login(self, email, password):
-        """Authenticate user with Firebase Auth REST API"""
-        try:
-            # Firebase Auth REST API endpoint
-            auth_url = f"https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key={st.secrets['default']['apiKey']}"
-        
-            # Request body
-            auth_data = {
-                "email": email,
-                "password": password,
-                "returnSecureToken": True
-            }
-        
-            # Make authentication request with detailed error handling
-            response = requests.post(auth_url, json=auth_data)
-        
-            # Print response for debugging
-            print(f"Auth Response Status: {response.status_code}")
-            print(f"Auth Response Content: {response.text}")
-        
-            if response.status_code != 200:
-                error_data = response.json()
-                error_message = error_data.get('error', {}).get('message', 'Unknown error')
-                st.error(f"Authentication failed: {error_message}")
-                return False
+            return conversation_id       
             
-            # Get user details
-            user = auth.get_user_by_email(email)
-        
-            # Set session state
-            st.session_state.user = user
-            st.session_state.logged_in = True 
-            st.session_state.messages = [{
-                **INITIAL_ASSISTANT_MESSAGE,
-                "timestamp": self.format_time()
-            }]
-            st.session_state.stage = 'initial'
-        
-            return True
-        
-        except requests.exceptions.RequestException as e:
-            st.error(f"Network error: {str(e)}")
-            return False       
-        except Exception as e:
-            st.error(f"Login failed: {str(e)}")        
-            return False
-        
 def main():
+    """Main function for the application"""
+    # Create an instance of EWA
     app = EWA()
 
     # Login page
@@ -333,10 +288,44 @@ def main():
         with st.form("login"):
             email = st.text_input("Email")
             password = st.text_input("Password", type="password")
-            submit = st.form_submit_button("Login", use_container_width=True)
-            if submit:
-                if app.login(email, password):  # Use the app instance to call login
+            submitted = st.form_submit_button("Login", use_container_width=True)
+            
+            if submitted:
+                try:
+                    # Firebase Auth REST API endpoint
+                    auth_url = f"https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key={st.secrets['default']['apiKey']}"
+                    
+                    # Request body
+                    auth_data = {
+                        "email": email,
+                        "password": password,
+                        "returnSecureToken": True
+                    }
+                    
+                    # Make authentication request
+                    response = requests.post(auth_url, json=auth_data)
+                    
+                    if response.status_code != 200:
+                        error_data = response.json()
+                        error_message = error_data.get('error', {}).get('message', 'Unknown error')
+                        st.error(f"Authentication failed: {error_message}")
+                        return False
+                        
+                    # Get user details
+                    user = auth.get_user_by_email(email)
+                    st.session_state.user = user
+                    st.session_state.logged_in = True 
+                    st.session_state.messages = [{
+                        **INITIAL_ASSISTANT_MESSAGE,
+                        "timestamp": app.format_time()
+                    }]
+                    st.session_state.stage = 'initial'
                     st.rerun()
+                    
+                except requests.exceptions.RequestException as e:
+                    st.error(f"Network error: {str(e)}")
+                except Exception as e:
+                    st.error(f"Login failed: {str(e)}")
         return
 
     # Main chat interface
