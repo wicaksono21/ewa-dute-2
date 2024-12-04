@@ -50,30 +50,30 @@ class EWA:
     @st.cache_data(ttl=300)  # Cache for 5 minutes
     def get_conversations(_self, user_id):
         """Retrieve conversation history from Firestore"""
-        # Get total conversation count
-        count = len(list(db.collection('conversations')
-                        .where('user_id', '==', user_id)
-                        .stream()))
+        try:
+            # Get total conversation count
+            query = db.collection('conversations').where('user_id', '==', user_id)
+            count = len(list(query.stream()))
     
-        # Calculate start position based on current page
-        page = st.session_state.get('page', 0)
-        start = page * 10
+            # Calculate start position based on current page
+            page = st.session_state.get('page', 0)
+            start = page * 10
     
-        # Get conversations and convert to list of dictionaries
-        conversations = list(query
-            .order_by('updated_at', direction=firestore.Query.DESCENDING)
-            .offset(start)
-            .limit(10)
-            .stream())
+            # Get conversations and convert to list of dictionaries
+            conversations = list(query
+                .order_by('updated_at', direction=firestore.Query.DESCENDING)
+                .offset(start)
+                .limit(10)
+                .stream())
             
-        # Convert to serializable format
-        conv_list = [_self._convert_conversation_to_dict(conv) for conv in conversations]
+            # Convert to serializable format
+            conv_list = [_self._convert_conversation_to_dict(conv) for conv in conversations]
             
-        return conv_list, count > (start + 10)
+            return conv_list, count > (start + 10)
             
-    except Exception as e:
-        st.error(f"Error fetching conversations: {str(e)}")
-        return [], False
+        except Exception as e:
+            st.error(f"Error fetching conversations: {str(e)}")
+            return [], False
 
     def render_sidebar(self):
         """Render sidebar with conversation history"""
