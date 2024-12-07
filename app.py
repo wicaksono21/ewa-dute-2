@@ -8,7 +8,7 @@ import requests
 
 # Import configurations
 from stageprompts import INITIAL_ASSISTANT_MESSAGE
-from reviewinstructions import SYSTEM_INSTRUCTIONS, REVIEW_INSTRUCTIONS, DISCLAIMER, SCORING_CRITERIA
+from reviewinstructions import MODULE_LEARNING_OBJECTIVES, MODULE_SYLLABUS, SYSTEM_INSTRUCTIONS, REVIEW_INSTRUCTIONS, DISCLAIMER, SCORING_CRITERIA
 
 # Initialize Firebase
 if not firebase_admin._apps:
@@ -171,7 +171,7 @@ class EWA:
             assistant_content = response.choices[0].message.content
             
             # Add disclaimer for review responses
-            if is_review:
+            if is_review and ("Estimated Grade" in assistant_content or "Total Score:" in assistant_content):
                 assistant_content = f"{assistant_content}\n\n{DISCLAIMER}"
                 
             st.chat_message("assistant").write(f"{time_str} {assistant_content}")
