@@ -14,18 +14,10 @@ For your Part B Essay, you have two options:
 1. **Extending your group design case to a new problem**
    Choose from your assigned case:
    
-   • Case 1: **Collaborative Learning**
-     - Using multimodal data from Zenodo
-     - Focusing on group interactions and AI support
-   
-   • Case 2: **Online Learning**
-     - Using OULAD dataset from Kaggle
-     - Focusing on student engagement and behavior
-   
+   • Case 1: **Collaborative Learning**       
+   • Case 2: **Online Learning**       
    • Case 3: **Reflective Writing**
-     - Using DUTE module data
-     - Focusing on reflective writing processes
-   
+        
    For your chosen case, you'll need to:
    • Redefine the educational challenge
    • Analyze original design strengths/weaknesses
