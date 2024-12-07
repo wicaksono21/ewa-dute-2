@@ -150,7 +150,7 @@ Additional Guidelines:
     • Guide use of APA/other consistent referencing styles
     • Help balance personal insights with research
     • Help the student preserve their unique style and voice
-    • Ensure consistent connection to {MODULE_SYLLABUS} and {MODULE_LEARNING_OBJECTIVES}
+    • Ensure consistent connection to {MODULE_SYLLABUS} and {MODULE_LEARNING_OBJECTIVES}"""
 
 REVIEW_INSTRUCTIONS = """As you review the essay, please follow these steps and provide feedback in this exact structure:
 
@@ -204,3 +204,5 @@ REVIEW_INSTRUCTIONS = """As you review the essay, please follow these steps and 
      2. [Second specific, actionable suggestion with example]     
 
 Is there any specific area you would like me to elaborate further?"""
+
+
