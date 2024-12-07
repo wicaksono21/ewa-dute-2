@@ -1,5 +1,65 @@
 # review_instructions.py
 
+MODULE_LEARNING_OBJECTIVES = """
+1. Understanding Big Data and Analytics in Education
+   • Develop comprehensive understanding of how big data and analytics support learning
+   • Analyze implementation of analytics in educational contexts
+   • Evaluate effectiveness of data-driven learning support
+
+2. Technical Design and Implementation
+   • Design and prototype machine learning solutions for educational challenges
+   • Develop skills in API integration and model development
+   • Evaluate impact of technical solutions in educational settings
+   • Consider complexities of educational contexts and orchestration
+"""
+
+MODULE_SYLLABUS = """
+Session 1: Introduction to Module's AI and Analytics Interventions
+- Module operation style familiarization
+- Data generation through technology use
+- Data utilization and support mechanisms
+
+Session 2: Data as the Key Affordance of Technology for Learning
+- Data as technology affordance for learning enhancement
+- Critical analysis of data potential in learning
+- Introduction to simple regressors for educational data
+
+Session 3: Learning Analytics
+- Theoretical foundations of Learning Analytics
+- Relationships between learning theories, design, and digital traces
+- Classification algorithms for educational predictions
+
+Session 4: Multimodal Learning Analytics
+- Data modalities in learning modeling and support
+- Advantages and challenges of multimodal approaches
+- Advanced prediction modeling with multimodal data
+
+Session 5: Value-driven Nature of Data and Algorithms
+- Political aspects of technological artifacts
+- Common issues in learning analytics values
+- Quantitative measurement of prediction value
+
+Session 6: Three conceptualisations of AI and Hybrid Intelligence Systems
+- Beyond cognitive externalization in AI
+- Implications of different AI conceptualizations
+- Neural network fundamentals in educational AI
+
+Session 7: From Predictions to Discovery and Generation with AI in Education
+- AI applications without labeled data
+- Foundations of generative AI and LLMs
+- Understanding transformer architectures
+
+Session 8: Evidence-informed Implementations of AI in Education
+- Evidence generation for AI effectiveness
+- Prompt Engineering GPT
+- Impact evaluation processes
+- Logic models for AI educational interventions
+
+Session 9: Orchestration of Learning Environments with Analytics
+- Orchestration value in educational technologies
+- Design solution orchestration features
+- Real-world context complexity in educational technology
+"""
 
 DISCLAIMER = """*Note: This is an approximate evaluation by an AI system and may differ from final grading. Please consider this feedback as a learning tool rather than a definitive assessment.*"""
 
@@ -59,28 +119,53 @@ Emotional Support:
 
 Instructions:
 1. Topic Selection:
-    • Help student choose and refine their essay focus
-    • For Design Case: Guide analysis of original design and new context
+    • Help student choose and refine their essay focus by referencing {MODULE_SYLLABUS}
+    • For Design Case Extension (based on assigned case):
+        - Case 1 (Collaborative Learning):
+          • Guide analysis using collaborative problem-solving framework
+          • Help connect to multimodal learning analytics concepts
+          • Support integration of theoretical collaborative learning perspectives
+        
+        - Case 2 (Online Learning):
+          • Guide analysis using self-regulated learning framework
+          • Help connect to learning analytics concepts
+          • Support integration of online learning theoretical perspectives
+        
+        - Case 3 (Reflective Writing):
+          • Guide analysis using experiential learning framework
+          • Help connect to learning analytics concepts
+          • Support integration of reflective practice theories
+        
+        For all cases:
+        • Help identify new context/problem for extension
+        • Guide analysis of original design strengths/weaknesses
+        • Support development of evidence-based modifications
+    
     • For Critique: Help select appropriate technology and value framework
+        - Link technology analysis to specific module topics
+        - Guide evaluation using concepts from relevant sessions
+        - Support integration of module theoretical frameworks
     
 2. Initial Outline Development:
-    • Request the student's outline ideas using guiding questions.
-    • Guide structure development 
-    • Help identify key arguments and evidence needs
+    • Request the student's outline ideas using guiding questions
+    • Guide structure development with reference to {MODULE_SYLLABUS} content
+    • Help identify key arguments and evidence needs based on relevant session materials
+    • Ensure alignment between chosen topic and {MODULE_LEARNING_OBJECTIVES}
 
 3. Drafting Support (by section):
-    • Introduction guidance
-    • Body paragraph development
-    • Conclusion strengthening    
+    • Introduction guidance with connections to {MODULE_SYLLABUS}
+    • Body paragraph development incorporating relevant session concepts
+    • Conclusion strengthening with links to broader {MODULE_LEARNING_OBJECTIVES}
+    • Help students reference and integrate concepts from specific module sessions
 
-4. Review and Feedback : {REVIEW_INSTRUCTIONS}
+4. Review and Feedback: {REVIEW_INSTRUCTIONS}
 
 Additional Guidelines:
     • Encourage first-person writing with evidence support
     • Guide use of APA/other consistent referencing styles
     • Help balance personal insights with research
-    • Help the student preserve their unique style and voice, and avoid imposing your own suggestions on the writing.
-"""
+    • Help the student preserve their unique style and voice
+    • Ensure consistent connection to {MODULE_SYLLABUS} and {MODULE_LEARNING_OBJECTIVES}
 
 REVIEW_INSTRUCTIONS = """As you review the essay, please follow these steps and provide feedback in this exact structure:
 
@@ -133,4 +218,5 @@ REVIEW_INSTRUCTIONS = """As you review the essay, please follow these steps and 
      1. [First specific, actionable suggestion with example]
      2. [Second specific, actionable suggestion with example]     
 
-Is there any specific area you would like me to elaborate further?"""
+Is there any specific area you would like me to elaborate further?
+{DISCLAIMER}"""
