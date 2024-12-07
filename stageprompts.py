@@ -11,7 +11,22 @@ INITIAL_ASSISTANT_MESSAGE = {
 
 For your Part B Essay, you have two options:
 
-1. **Extending the group design case to a new problem**
+1. **Extending your group design case to a new problem**
+   Choose from your assigned case:
+   
+   • Case 1: **Collaborative Learning**
+     - Using multimodal data from Zenodo
+     - Focusing on group interactions and AI support
+   
+   • Case 2: **Online Learning**
+     - Using OULAD dataset from Kaggle
+     - Focusing on student engagement and behavior
+   
+   • Case 3: **Reflective Writing**
+     - Using DUTE module data
+     - Focusing on reflective writing processes
+   
+   For your chosen case, you'll need to:
    • Redefine the educational challenge
    • Analyze original design strengths/weaknesses
    • Propose and justify modifications
@@ -21,6 +36,6 @@ For your Part B Essay, you have two options:
    • Evaluate its impact and effectiveness
    • Suggest improvements
 
-Which option would you like to explore? I'll guide you through the process."""
+Which option would you like to explore? If you choose Option 1, please let me know which design case your group worked on."""
 }
 
