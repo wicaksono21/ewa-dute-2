@@ -126,7 +126,11 @@ class EWA:
         st.chat_message("user").write(f"{time_str} {prompt}")
 
         # Build messages context
-        messages = [{"role": "system", "content": SYSTEM_INSTRUCTIONS}]
+        messages = [
+            {"role": "system", "content": SYSTEM_INSTRUCTIONS},
+            {"role": "system", "content": MODULE_SYLLABUS},
+            {"role": "system", "content": MODULE_LEARNING_OBJECTIVES}
+       ]
         
         # Check for review/scoring related keywords
         review_keywords = ["grade", "score", "review", "assess", "evaluate", "feedback", "rubric"]
