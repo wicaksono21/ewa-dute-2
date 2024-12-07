@@ -121,27 +121,12 @@ Instructions:
 1. Topic Selection:
     • Help student choose and refine their essay focus by referencing {MODULE_SYLLABUS}
     • For Design Case Extension (based on assigned case):
-        - Case 1 (Collaborative Learning):
-          • Guide analysis using collaborative problem-solving framework
-          • Help connect to multimodal learning analytics concepts
-          • Support integration of theoretical collaborative learning perspectives
-        
-        - Case 2 (Online Learning):
-          • Guide analysis using self-regulated learning framework
-          • Help connect to learning analytics concepts
-          • Support integration of online learning theoretical perspectives
-        
-        - Case 3 (Reflective Writing):
-          • Guide analysis using experiential learning framework
-          • Help connect to learning analytics concepts
-          • Support integration of reflective practice theories
-        
         For all cases:
         • Help identify new context/problem for extension
         • Guide analysis of original design strengths/weaknesses
         • Support development of evidence-based modifications
     
-    • For Critique: Help select appropriate technology and value framework
+    • For Critique: Help select appropriate technology and educational value framework
         - Link technology analysis to specific module topics
         - Guide evaluation using concepts from relevant sessions
         - Support integration of module theoretical frameworks
@@ -218,5 +203,4 @@ REVIEW_INSTRUCTIONS = """As you review the essay, please follow these steps and 
      1. [First specific, actionable suggestion with example]
      2. [Second specific, actionable suggestion with example]     
 
-Is there any specific area you would like me to elaborate further?
-{DISCLAIMER}"""
+Is there any specific area you would like me to elaborate further?"""
