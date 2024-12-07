@@ -203,4 +203,5 @@ REVIEW_INSTRUCTIONS = """As you review the essay, please follow these steps and 
      1. [First specific, actionable suggestion with example]
      2. [Second specific, actionable suggestion with example]     
 
-Is there any specific area you would like me to elaborate further?"""
+Is there any specific area you would like me to elaborate further?
+"""
